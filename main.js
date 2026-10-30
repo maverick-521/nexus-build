@@ -486,3 +486,62 @@
   menu.addEventListener('click', e => { if (e.target.closest('a')) setMenu(false); });
   addEventListener('keydown', e => { if (e.key === 'Escape' && !menu.hidden) { setMenu(false); btn.focus(); } });
 })();
+
+/* ==== GRAIN_TUNER (temporary preview control) =============================================
+   Bottom-left pill: [Grain: <look>] cycles Previous / New / Soft / Strong; [Uniform | Per-section]
+   toggles hero-heavy, rest-light grain. To remove: set GRAIN_TUNER = false (or delete this block
+   and the GRAIN_TUNER block at the end of style.css). Without it the site uses the "New" look. */
+const GRAIN_TUNER = true;
+(function grainTuner() {
+  if (!GRAIN_TUNER) return;
+  const grain = document.querySelector('.grain'); if (!grain) return;
+  const LOOKS = [   // img: CSS var holding the noise tile; op: base opacity; size: tile size
+    { id: 'previous', name: 'Previous', img: 'var(--noise)',  op: .022, size: '180px' },   // v4/v5 exactly
+    { id: 'new',      name: 'New',      img: 'var(--noise6)', op: .05,  size: '180px' },   // v6 default
+    { id: 'soft',     name: 'Soft',     img: 'var(--noise6)', op: .032, size: '180px' },
+    { id: 'strong',   name: 'Strong',   img: 'var(--noise6)', op: .075, size: '200px' }
+  ];
+  const HERO = 1.4, REST = .65;    // per-section multipliers on the look's opacity
+  const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+  let li = Math.max(0, LOOKS.findIndex(l => l.id === store.get('nb-grain-look'))); if (!store.get('nb-grain-look')) li = 1;
+  let per = store.get('nb-grain-sec') === '1';
+
+  const ui = document.createElement('div');
+  ui.className = 'gt'; ui.setAttribute('role', 'group'); ui.setAttribute('aria-label', 'Grain preview');
+  ui.innerHTML = '<button type="button" class="gt-look" aria-live="polite"></button><button type="button" class="gt-sec" aria-pressed="false"></button>';
+  const bLook = ui.children[0], bSec = ui.children[1];
+  document.body.appendChild(ui);
+
+  function apply() {
+    const L = LOOKS[li], s = grain.style;
+    s.setProperty('--grain-img', L.img); s.setProperty('--grain-op', L.op); s.setProperty('--grain-size', L.size);
+    bLook.innerHTML = 'Grain: <b>' + L.name + '</b>';
+    bLook.setAttribute('aria-label', 'Grain look: ' + L.name + '. Activate for the next look.');
+    bSec.textContent = per ? 'Per-section' : 'Uniform';
+    bSec.setAttribute('aria-pressed', String(per));
+    bSec.setAttribute('aria-label', 'Grain intensity: ' + (per ? 'per section, heavier on the hero' : 'uniform') + '. Activate to switch.');
+    if (!per) { s.removeProperty('--grain-sec'); last = -1; } else { hook(); update(); }
+  }
+  // per-section: 1 while the hero stage fills the screen, easing to REST over one viewport as it leaves
+  const stage = document.querySelector('.stage');
+  let last = -1, queued = false;
+  function update() {
+    queued = false; if (!per || !stage) return;
+    const b = stage.getBoundingClientRect().bottom, h = innerHeight || 1;
+    let t = Math.min(1, Math.max(0, (b - h * .15) / h)); t = t * t * (3 - 2 * t);
+    const v = Math.round((REST + (HERO - REST) * t) * 100) / 100;
+    if (v !== last) { last = v; grain.style.setProperty('--grain-sec', v); }
+  }
+  let tail = 0;
+  const onScroll = () => { if (!per) return; if (!queued) { queued = true; requestAnimationFrame(update); } clearTimeout(tail); tail = setTimeout(() => requestAnimationFrame(update), 160); };   // trailing check after the scroll settles
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', onScroll, { passive: true });
+  let hooked = false; const hook = () => { if (!hooked && window.NX && NX.lenis && NX.lenis.on) { hooked = true; NX.lenis.on('scroll', onScroll); } };
+  bLook.addEventListener('click', () => { li = (li + 1) % LOOKS.length; store.set('nb-grain-look', LOOKS[li].id); apply(); });
+  bSec.addEventListener('click', () => { per = !per; store.set('nb-grain-sec', per ? '1' : '0'); apply(); });
+  // keep taps on the pill from reaching any page drag handlers
+  ui.addEventListener('pointerdown', e => e.stopPropagation());
+  apply();
+  window.__grainTuner = { get look() { return LOOKS[li].id; }, get per() { return per; }, get sec() { return getComputedStyle(grain).getPropertyValue('--grain-sec') || '1'; } };
+})();
+/* ==== /GRAIN_TUNER ==== */

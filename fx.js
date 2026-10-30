@@ -88,9 +88,9 @@
       P[i * 8 + 2] = (-60 - rand() * 150) * spread;                 // drift in from the left
       P[i * 8 + 3] = ((rand() - .5) * 90 + (rand() - .5) * 30) * spread;
       P[i * 8 + 4] = fx * .35 + rand() * .10;                       // delay: left lands first, like the hero
-      P[i * 8 + 5] = .5 + rand() * .6;                              // brightness
+      P[i * 8 + 5] = .62 + rand() * .5;                             // brightness
       P[i * 8 + 6] = rand() * 6.283;                                // swirl phase
-      P[i * 8 + 7] = rand() < .3 ? (rand() < .1 ? 2 : 1) : 0;       // 0 platinum, 1 emerald, 2 bright jade spark
+      P[i * 8 + 7] = rand() < .14 ? (rand() < .3 ? 2 : 1) : 0;      // 0 silver, 1 sage whisper, 2 pale spark
     }
     it.P = P; it.n = n; it.w = s.w; it.h = s.h;
   }
@@ -131,7 +131,7 @@
   const go = () => items.forEach(it => io.observe(it.el));
   (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(go, go);
 
-  const COL = ['#e2e8e5', '#4fc492', '#a9f5d2'];
+  const COL = ['#e9ebed', '#a9c2b7', '#f3f5f6'];   // silver, a whisper of sage, pale spark
   const dbg = window.__fx = { items, active, at: null };   // `at` freezes reveal time (s) for alignment checks
 
   // read phase: live boxes of everything mid-reveal
@@ -170,7 +170,7 @@
           const a = Math.min(1, u * 4) * fade * P[o + 5];
           if (a < .02) continue;
           g.globalAlpha = a;
-          const s = text ? 1.3 : 1.15;
+          const s = text ? 1.4 : 1.25;
           g.fillRect(x - s / 2, y - s / 2, s, s);
         }
       }

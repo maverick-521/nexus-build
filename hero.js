@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-/* Nexus Build v5 hero: grains converge into a faceted dark-emerald glass "N" with a platinum halo.
+/* Nexus Build v6 hero: grains converge into a solid black-chrome "N" (thin stems, heavy diagonal) with platinum chamfers.
    One clock (NX), one light band, one curve. The mesh and the grains share the same group and the
    same unit space, so the grains land exactly on the jewel's silhouette and then dissolve into it. */
 const root = document.documentElement;
@@ -37,21 +37,21 @@ function start() {
 
   // ---------- studio environment (soft boxes, no external files) ----------
   const env = new THREE.Scene();
-  env.add(new THREE.Mesh(new THREE.SphereGeometry(30, 24, 12), new THREE.MeshBasicMaterial({ color: 0x030806, side: THREE.BackSide })));
+  env.add(new THREE.Mesh(new THREE.SphereGeometry(30, 24, 12), new THREE.MeshBasicMaterial({ color: 0x060708, side: THREE.BackSide })));
   const box = (w, h, col, k, pos, look) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(k), side: THREE.DoubleSide }));
     m.position.set(...pos); m.lookAt(...(look || [0, 0, 0])); env.add(m); return m;
   };
-  box(16, 3.2, '#f4fffa', 3.2, [0, 9, 2]);                 // overhead strip
+  box(16, 3.2, '#f6f7f8', 3.2, [0, 9, 2]);                 // overhead strip
   box(2.2, 12, '#e8f4ff', 4.0, [-9, 1, 3]);                // cool key, left
   box(1.4, 12, '#fff1e0', 2.2, [9, 0, 1]);                 // warm rim, right
-  box(22, 9, '#0f6b48', 0.7, [0, -9, 0]);                  // emerald floor bounce
+  box(22, 9, '#2c3331', 0.55, [0, -9, 0]);                 // neutral floor bounce, a breath of green
   box(9, 1.1, '#ffffff', 5.0, [-2.5, 4.2, 9]);             // front strip: gives the face a long polished reflection
-  box(14, 6, '#0b3d2b', 0.45, [2, -3, 9]);                 // front emerald fill (kept low: the face stays deep)
-  box(7, 7, '#13805a', 1.6, [1.5, -.5, -9]);              // behind: what you see *through* the stone
-  box(.7, 14, '#f2fff9', 3.0, [-2.5, 0, -9]);             // a thin white strip behind, refracted into the body
+  box(14, 6, '#24282b', 0.5, [2, -3, 9]);                  // front graphite fill (kept low: the face stays deep)
+  box(7, 7, '#3a4744', 0.9, [1.5, -.5, -9]);              // behind: soft neutral back light
+  box(.7, 14, '#f4f5f6', 3.0, [-2.5, 0, -9]);             // a thin white strip behind, refracted into the body
   box(3, 3, '#ffffff', 5.0, [6, 6, 7]);                    // small hot softbox: glints on the chamfers
-  box(12, 1.0, '#f6fffb', 3.2, [0, 7.5, 7]);              // platinum line on the top chamfers
+  box(12, 1.0, '#f7f7f8', 3.2, [0, 7.5, 7]);              // platinum line on the top chamfers
   box(1.0, 12, '#eef6ff', 2.6, [-7.5, 0, 7]);             // and on the left chamfers
   box(1.0, 12, '#fff6ea', 1.4, [7.5, 0, 7]);              // a warm, softer one on the right
   const pmrem = new THREE.PMREMGenerator(renderer);
@@ -59,9 +59,9 @@ function start() {
   scene.environment = envTex;
 
   // ---------- the jewel ----------
-  // N outline in unit space (y up), two stems and a parallel diagonal
-  const NP = [[-.34, -.36], [-.34, .36], [-.16, .36], [.17, -.08], [.17, .36], [.34, .36], [.34, -.36], [.16, -.36], [-.17, .08], [-.17, -.36]];
-  const DEPTH = .12, BT = .045, BS = .03;
+  // N outline in unit space (y up): hairline stems, one heavy diagonal (high-contrast, Didone-like)
+  const NP = [[-.34, -.36], [-.34, .36], [-.12, .36], [.265, -.2426], [.265, .36], [.34, .36], [.34, -.36], [.12, -.36], [-.265, .2426], [-.265, -.36]];
+  const DEPTH = .1, BT = .022, BS = .014;
   const shape = new THREE.Shape(); NP.forEach(([x, y], i) => i ? shape.lineTo(x, y) : shape.moveTo(x, y)); shape.closePath();
   const ngeo = new THREE.ExtrudeGeometry(shape, { depth: DEPTH, bevelEnabled: true, bevelThickness: BT, bevelSize: BS, bevelSegments: 1, curveSegments: 1 });
   ngeo.translate(0, 0, -DEPTH / 2);
@@ -70,7 +70,7 @@ function start() {
   const U = {
     uTime: { value: 0 }, uForm: { value: 0 }, uBlow: { value: 0 }, uSolid: { value: 0 },
     uSweep: { value: -9 }, uLight: { value: new THREE.Vector2(-0.3, 0.35) },
-    uSize: { value: mobile ? 2.3 : 1.9 }, uDpr: { value: dpr }
+    uSize: { value: mobile ? 2.4 : 2.0 }, uDpr: { value: dpr }
   };
   // shared dissolve + inner glow + light band, injected into the physical material
   function jewelize(mat, kind) {
@@ -94,89 +94,71 @@ function start() {
           vec3 V = normalize(vViewPosition);
           float ndv = clamp(dot(normal, V), 0.0, 1.0);
           float band = exp(-pow((dot(lp.xy, vec2(0.788,-0.616)) - uSweep) * 5.5, 2.0));
-          ${kind === 'gem' ? `
-          // refraction: look *through* the stone into the studio behind it, tinted by emerald absorption
-          vec3 refr = vec3(0.0), chm = vec3(0.0);
+          vec3 chm = vec3(0.0);
           #ifdef ENVMAP_TYPE_CUBE_UV
             vec3 wN = inverseTransformDirection(normal, viewMatrix);
-            vec3 wV = normalize(vLoc - cameraPosition);
-            vec3 rd = refract(wV, wN, 1.0/1.62);
-            rd = normalize(rd + vec3(lp.x*0.9, lp.y*0.7, 0.0));                   // lens-like depth across the face
-            refr = textureCubeUV(envMap, rd, 0.12).rgb;
-            float bev = smoothstep(0.08, 0.22, 1.0 - ndv);                       // chamfer facets only
-            chm = textureCubeUV(envMap, reflect(wV, wN), 0.04).rgb * vec3(0.88, 0.97, 0.93) * bev * 0.35;
-            float kl = pow(max(dot(wN, normalize(vec3(-0.45, 0.8, 0.45))), 0.0), 10.0)
-                     + 0.45 * pow(max(dot(wN, normalize(vec3(0.7, 0.35, 0.6))), 0.0), 14.0);
-            chm += vec3(0.90, 0.97, 0.94) * kl * bev * 1.1;                     // platinum catch-lights on the facets
+            float bev = smoothstep(0.08, 0.22, 1.0 - ndv);                       // chamfers only
+            float kl = pow(max(dot(wN, normalize(vec3(-0.45, 0.8, 0.45))), 0.0), 12.0)
+                     + 0.4 * pow(max(dot(wN, normalize(vec3(0.7, 0.35, 0.6))), 0.0), 16.0);
+            chm = vec3(0.93, 0.94, 0.95) * kl * bev * 0.9;                     // crisp platinum catch-lights on the chamfers
           #endif
           float fres = pow(1.0 - ndv, 3.0);
-          float core = exp(-dot(lp.xy, lp.xy) * 6.0);
-          float rl = dot(refr, vec3(0.3,0.5,0.2));
-          totalEmissiveRadiance += chm + refr * vec3(0.03, 0.40, 0.25) * 0.05 + refr * vec3(0.30, 0.85, 0.62) * smoothstep(1.2, 4.0, rl) * 0.06  // jade light from inside
-                                 + vec3(0.01, 0.07, 0.045) * core                        // soft inner glow
-                                 + vec3(0.18, 0.75, 0.52) * fres * 0.16                  // emerald fire on the chamfers
-                                 + vec3(0.82, 1.0, 0.92) * band * (0.04 + fres * 0.9)    // the light sweep
-                                 + vec3(0.35, 1.0, 0.72) * edgeGlow * 1.4;` : `
-          totalEmissiveRadiance += vec3(0.85,1.0,0.94) * band * 0.55 + vec3(0.35,1.0,0.72) * edgeGlow * 1.2;`}
+          // satin face: a soft top-left to bottom-right graphite-to-silver falloff (no lines, no facets)
+          float face = smoothstep(0.55, 0.92, ndv);
+          float grad = smoothstep(-0.5, 0.55, lp.y * 0.85 - lp.x * 0.35);
+          vec3 faceCol = mix(vec3(0.0), vec3(0.026, 0.027, 0.028), grad * grad);
+          totalEmissiveRadiance += chm + faceCol * face
+                                 + vec3(0.30, 0.55, 0.46) * fres * 0.05                  // the faintest green edge light
+                                 + vec3(0.92, 0.94, 0.95) * band * (0.025 + fres * 0.6)  // the light sweep
+                                 + vec3(0.80, 0.86, 0.84) * edgeGlow * 1.1;
         }`);
       sh.uniforms.uScaleInv = scaleInv;
     };
   }
   const scaleInv = { value: 1 };
+  // satin black chrome: a metal body that only shows the studio as long, soft reflections
   const gemMat = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color('#03170f'), metalness: 0.0, roughness: 0.035, ior: 1.62, reflectivity: 0.7,
-    specularIntensity: 1, specularColor: new THREE.Color('#c9ffe8'), clearcoat: 1, clearcoatRoughness: 0.03,
-    iridescence: 0.12, iridescenceIOR: 1.35, envMapIntensity: 1.25, flatShading: true
+    color: new THREE.Color('#8e9296'), metalness: 1.0, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.06,
+    envMapIntensity: 1.0, flatShading: true
   });
   jewelize(gemMat, 'gem');
   const gem = new THREE.Mesh(ngeo, gemMat);
 
-  const RING_R = .6, RING_T = .0055, RX = 1.24, RZ = -.2;
-  const ringMat = new THREE.MeshPhysicalMaterial({ color: new THREE.Color('#dfe9e4'), metalness: 1, roughness: 0.16, envMapIntensity: 1.3, clearcoat: .4 });
-  jewelize(ringMat, 'ring');
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(RING_R, RING_T, 10, 220), ringMat);
-  ring.rotation.set(RX, 0, RZ);
-
   const jewel = new THREE.Group();
-  jewel.add(gem, ring);
+  jewel.add(gem);
   scene.add(jewel);
 
-  // ---------- grains: sampled from the same outline, the same depth, the same ring ----------
+  // ---------- grains: sampled from the same outline and the same depth as the solid N ----------
   const inPoly = (x, y) => { let c = false; for (let i = 0, j = NP.length - 1; i < NP.length; j = i++) { const [xi, yi] = NP[i], [xj, yj] = NP[j]; if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) c = !c; } return c; };
   const edges = NP.map((p, i) => { const q = NP[(i + 1) % NP.length]; return { p, q, len: Math.hypot(q[0] - p[0], q[1] - p[1]) }; });
   const per = edges.reduce((s, e) => s + e.len, 0);
   // outward normal: polygon is clockwise in y-up space
   const area = NP.reduce((s, p, i) => { const q = NP[(i + 1) % NP.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0);
   const sgn = area > 0 ? 1 : -1;
-  const eul = new THREE.Euler(RX, 0, RZ), v3 = new THREE.Vector3();
 
   const aT = new Float32Array(COUNT * 3), aC = new Float32Array(COUNT * 3), aS = new Float32Array(COUNT * 4), aK = new Float32Array(COUNT);
   for (let i = 0; i < COUNT; i++) {
     const r = Math.random();
     let tx, ty, tz, cls;
-    if (r < .46) {            // polished face
+    if (r < .58) {            // polished face
       cls = 0; do { tx = Math.random() * .7 - .35; ty = Math.random() * .74 - .37; } while (!inPoly(tx, ty));
       tz = FRONT;
-    } else if (r < .82) {     // chamfered silhouette, through the thickness
+    } else {                  // chamfered silhouette, through the thickness
       cls = 1; let d = Math.random() * per, e = edges[0];
       for (const ed of edges) { if (d <= ed.len) { e = ed; break; } d -= ed.len; }
       const u = d / e.len, dx = (e.q[0] - e.p[0]) / e.len, dy = (e.q[1] - e.p[1]) / e.len;
       const nx = dy * sgn, ny = -dx * sgn, off = Math.random() * BS;
       tx = e.p[0] + (e.q[0] - e.p[0]) * u + nx * off; ty = e.p[1] + (e.q[1] - e.p[1]) * u + ny * off;
       tz = FRONT - Math.pow(Math.random(), 1.6) * (DEPTH + BT * 2);
-    } else {                  // halo
-      cls = 2; const a = Math.random() * Math.PI * 2;
-      v3.set(Math.cos(a) * RING_R, Math.sin(a) * RING_R, (Math.random() - .5) * RING_T * 2).applyEuler(eul);
-      tx = v3.x; ty = v3.y; tz = v3.z;
     }
     aT[i * 3] = tx; aT[i * 3 + 1] = ty; aT[i * 3 + 2] = tz;
     const a = Math.random() * Math.PI * 2, rad = 0.6 + Math.pow(Math.random(), 0.6) * 2.2;
     aC[i * 3] = tx - 1.4 + Math.cos(a) * rad; aC[i * 3 + 1] = ty + Math.sin(a) * rad * 0.55; aC[i * 3 + 2] = (Math.random() - 0.5) * 2.4;
     const delay = (tx + 0.5) * 0.42 + Math.random() * 0.22;
-    const bright = cls === 0 ? 0.4 + Math.random() * 0.4 : cls === 1 ? 0.75 + Math.random() * 0.5 : 0.65 + Math.random() * 0.45;
+    const bright = cls === 0 ? 0.5 + Math.random() * 0.4 : 0.8 + Math.random() * 0.5;
     aS[i * 4] = delay; aS[i * 4 + 1] = 0.6 + Math.random() * 0.9; aS[i * 4 + 2] = bright; aS[i * 4 + 3] = Math.random();
-    // platinum and emerald grains: jade through the body, platinum on the halo, a few bright jade sparks
-    const pe = cls === 0 ? .42 : cls === 1 ? .22 : .04;
+    // silver grains with a whisper of sage: a few on the face and edges, rare pale sparks
+    const pe = cls === 0 ? .08 : .05;
     aK[i] = Math.random() < pe ? (Math.random() < .06 ? 1.0 : .7) : 0;
   }
   const geo = new THREE.BufferGeometry();
@@ -245,9 +227,9 @@ function start() {
         float glint=pow(aSeed.w,10.0);
         float l=exp(-dot(position.xy-uLight,position.xy-uLight)*7.0);
         float settle=uSolid*fe*(1.0-b);                 // once the jewel is solid, grains step back
-        float k=(br*0.30 + l*0.22*br + (1.0-fe)*0.08)*mix(1.0,0.02,settle) + band*(0.55+glint*5.0)*mix(1.0,0.18,settle);
-        vec3 plat=mix(vec3(0.86,0.89,0.88),vec3(0.93,0.92,0.88),aSeed.w);
-        vec3 jade=mix(vec3(0.22,0.66,0.47),vec3(0.55,0.95,0.76),step(0.95,aEm));
+        float k=(br*0.36 + l*0.24*br + (1.0-fe)*0.08)*mix(1.0,0.02,settle) + band*(0.55+glint*5.0)*mix(1.0,0.18,settle);
+        vec3 plat=mix(vec3(0.88,0.89,0.91),vec3(0.94,0.93,0.91),aSeed.w);
+        vec3 jade=mix(vec3(0.58,0.70,0.65),vec3(0.80,0.90,0.85),step(0.95,aEm));
         vCol=mix(plat,jade,step(0.5,aEm))*k;
         vA=(1.0-smoothstep(0.55,1.0,b))*smoothstep(0.0,0.08,uForm+0.02)/(dof*dof);
         vSpec=band*(0.4+glint*2.0)*mix(1.0,0.25,settle);
@@ -260,7 +242,7 @@ function start() {
         float body=smoothstep(0.5,0.0,r); body*=body;
         float core=exp(-r*r*60.0);
         float spec=exp(-dot(d-vec2(-0.12,-0.14),d-vec2(-0.12,-0.14))*140.0);
-        vec3 c=vCol*(body*0.75+core*0.55)+vec3(0.92,1.0,0.96)*spec*(0.10+vSpec)*vA;
+        vec3 c=vCol*(body*0.75+core*0.55)+vec3(0.95,0.96,0.97)*spec*(0.10+vSpec)*vA;
         gl_FragColor=vec4(c*vA,1.0);
       }`
   });
@@ -336,7 +318,7 @@ function start() {
     const S = emPx * Z0 / z, Dc = (W / 2) * 0.788 + (r.top + H / 2 > 0 ? H / 2 : 0) * 0.616;
     U.uSweep.value = D == null ? -9 : (D - Dc) / S;
     U.uLight.value.set(m.x * 0.5 - 0.15, -m.y * 0.5 + 0.2);
-    gem.visible = ring.visible = U.uSolid.value > 0.001 && U.uBlow.value < 0.999;
+    gem.visible = U.uSolid.value > 0.001 && U.uBlow.value < 0.999;
 
     setVar('--solid', (sm(3.3, 5.6, t) * (1 - sm(0.03, 0.22, p))).toFixed(2));
     setVar('--intro', (sm(4.8, 6.2, t) * (1 - sm(0.0, 0.07, p))).toFixed(3));
