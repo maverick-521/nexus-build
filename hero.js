@@ -1,76 +1,190 @@
 import * as THREE from 'three';
-
+/* Nexus Build v5 hero: grains converge into a faceted dark-emerald glass "N" with a platinum halo.
+   One clock (NX), one light band, one curve. The mesh and the grains share the same group and the
+   same unit space, so the grains land exactly on the jewel's silhouette and then dissolve into it. */
 const root = document.documentElement;
 const stage = document.querySelector('.stage');
 const sticky = document.querySelector('.stage-sticky');
 const canvas = document.getElementById('grains');
-const emWrap = document.querySelector('.emblem-wrap');
-const emblem = document.querySelector('.emblem');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-
+const NX = window.NX;
 function goStatic() { root.classList.add('static'); }
 
-if (reduce) goStatic(); else start();
+if (reduce || !NX) goStatic(); else start();
 
 function start() {
   let renderer;
   try {
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true, powerPreference: 'high-performance' });
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   } catch (e) { goStatic(); return; }
   window.__heroOK = true;
   root.classList.remove('static');
+  canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); goStatic(); }, false);
 
   const mobile = innerWidth < 760 || matchMedia('(pointer:coarse)').matches;
-  const COUNT = mobile ? 16000 : 60000;
-  const dpr = Math.min(devicePixelRatio || 1, mobile ? 1.5 : 2);
+  const COUNT = mobile ? 18000 : 46000;
+  const DPR_MAX = Math.min(devicePixelRatio || 1, mobile ? 1.5 : 1.75);
+  let dpr = DPR_MAX;
   renderer.setPixelRatio(dpr);
   renderer.setClearColor(0x000000, 0);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
 
   const scene = new THREE.Scene();
-  const FOV = 30;
+  const FOV = 30, Z0 = 10, Z1 = 9.3;
   const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
-  const Z0 = 10, Z1 = 9.2;
   camera.position.set(0, 0, Z0);
 
-  // ---- sample the emblem (same geometry as the CSS emblem) ----
-  const R = 512, cv = document.createElement('canvas'); cv.width = cv.height = R;
-  const g = cv.getContext('2d');
-  const rr = (x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
-  g.fillStyle = '#0000ff'; rr(0, 0, R, R, R * 0.27); g.fill();            // face
-  g.globalCompositeOperation = 'lighter';
-  g.strokeStyle = '#ff0000'; g.lineWidth = R * 0.016; rr(R * .008, R * .008, R * .984, R * .984, R * .265); g.stroke(); // outer rim
-  g.lineWidth = R * 0.012; rr(R * .08, R * .08, R * .84, R * .84, R * .84 * .22); g.stroke();                         // chamfer
-  g.strokeStyle = '#00ff00'; g.lineWidth = R * 0.11; g.lineCap = 'round'; g.lineJoin = 'round';
-  g.beginPath(); g.moveTo(R * .33, R * .70); g.lineTo(R * .33, R * .30); g.lineTo(R * .67, R * .70); g.lineTo(R * .67, R * .30); g.stroke();
-  const px = g.getImageData(0, 0, R, R).data;
+  // ---------- studio environment (soft boxes, no external files) ----------
+  const env = new THREE.Scene();
+  env.add(new THREE.Mesh(new THREE.SphereGeometry(30, 24, 12), new THREE.MeshBasicMaterial({ color: 0x030806, side: THREE.BackSide })));
+  const box = (w, h, col, k, pos, look) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(k), side: THREE.DoubleSide }));
+    m.position.set(...pos); m.lookAt(...(look || [0, 0, 0])); env.add(m); return m;
+  };
+  box(16, 3.2, '#f4fffa', 3.2, [0, 9, 2]);                 // overhead strip
+  box(2.2, 12, '#e8f4ff', 4.0, [-9, 1, 3]);                // cool key, left
+  box(1.4, 12, '#fff1e0', 2.2, [9, 0, 1]);                 // warm rim, right
+  box(22, 9, '#0f6b48', 0.7, [0, -9, 0]);                  // emerald floor bounce
+  box(9, 1.1, '#ffffff', 5.0, [-2.5, 4.2, 9]);             // front strip: gives the face a long polished reflection
+  box(14, 6, '#0b3d2b', 0.45, [2, -3, 9]);                 // front emerald fill (kept low: the face stays deep)
+  box(7, 7, '#13805a', 1.6, [1.5, -.5, -9]);              // behind: what you see *through* the stone
+  box(.7, 14, '#f2fff9', 3.0, [-2.5, 0, -9]);             // a thin white strip behind, refracted into the body
+  box(3, 3, '#ffffff', 5.0, [6, 6, 7]);                    // small hot softbox: glints on the chamfers
+  box(12, 1.0, '#f6fffb', 3.2, [0, 7.5, 7]);              // platinum line on the top chamfers
+  box(1.0, 12, '#eef6ff', 2.6, [-7.5, 0, 7]);             // and on the left chamfers
+  box(1.0, 12, '#fff6ea', 1.4, [7.5, 0, 7]);              // a warm, softer one on the right
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envTex = pmrem.fromScene(env, 0.035).texture;
+  scene.environment = envTex;
+
+  // ---------- the jewel ----------
+  // N outline in unit space (y up), two stems and a parallel diagonal
+  const NP = [[-.34, -.36], [-.34, .36], [-.16, .36], [.17, -.08], [.17, .36], [.34, .36], [.34, -.36], [.16, -.36], [-.17, .08], [-.17, -.36]];
+  const DEPTH = .12, BT = .045, BS = .03;
+  const shape = new THREE.Shape(); NP.forEach(([x, y], i) => i ? shape.lineTo(x, y) : shape.moveTo(x, y)); shape.closePath();
+  const ngeo = new THREE.ExtrudeGeometry(shape, { depth: DEPTH, bevelEnabled: true, bevelThickness: BT, bevelSize: BS, bevelSegments: 1, curveSegments: 1 });
+  ngeo.translate(0, 0, -DEPTH / 2);
+  const FRONT = DEPTH / 2 + BT;
+
+  const U = {
+    uTime: { value: 0 }, uForm: { value: 0 }, uBlow: { value: 0 }, uSolid: { value: 0 },
+    uSweep: { value: -9 }, uLight: { value: new THREE.Vector2(-0.3, 0.35) },
+    uSize: { value: mobile ? 2.3 : 1.9 }, uDpr: { value: dpr }
+  };
+  // shared dissolve + inner glow + light band, injected into the physical material
+  function jewelize(mat, kind) {
+    mat.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, { uTime: U.uTime, uSolid: U.uSolid, uBlow: U.uBlow, uSweep: U.uSweep });
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vLoc;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvLoc = (modelMatrix * vec4(position,1.0)).xyz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+        varying vec3 vLoc; uniform float uTime,uSolid,uBlow,uSweep,uScaleInv;
+        float hsh(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}`)
+        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+        vec3 lp = vLoc * uScaleInv;                       // back to unit space
+        float nz = hsh(floor(lp.xy*320.0));
+        float xn = lp.x + 0.5;
+        float vin = uSolid*1.3 - (xn*0.55 + nz*0.45);     // grows left to right, speckled like the grains
+        float vout = uBlow*1.7 - (xn*0.55 + nz*0.15);     // peels away exactly where the grains blow off
+        if (vin < 0.0 || vout > 0.02) discard;
+        float edgeGlow = (1.0 - smoothstep(0.0, 0.08, vin)) + (1.0 - smoothstep(-0.12, 0.02, -vout + 0.02)) * step(0.0005, uBlow);`)
+        .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        {
+          vec3 V = normalize(vViewPosition);
+          float ndv = clamp(dot(normal, V), 0.0, 1.0);
+          float band = exp(-pow((dot(lp.xy, vec2(0.788,-0.616)) - uSweep) * 5.5, 2.0));
+          ${kind === 'gem' ? `
+          // refraction: look *through* the stone into the studio behind it, tinted by emerald absorption
+          vec3 refr = vec3(0.0), chm = vec3(0.0);
+          #ifdef ENVMAP_TYPE_CUBE_UV
+            vec3 wN = inverseTransformDirection(normal, viewMatrix);
+            vec3 wV = normalize(vLoc - cameraPosition);
+            vec3 rd = refract(wV, wN, 1.0/1.62);
+            rd = normalize(rd + vec3(lp.x*0.9, lp.y*0.7, 0.0));                   // lens-like depth across the face
+            refr = textureCubeUV(envMap, rd, 0.12).rgb;
+            float bev = smoothstep(0.08, 0.22, 1.0 - ndv);                       // chamfer facets only
+            chm = textureCubeUV(envMap, reflect(wV, wN), 0.04).rgb * vec3(0.88, 0.97, 0.93) * bev * 0.35;
+            float kl = pow(max(dot(wN, normalize(vec3(-0.45, 0.8, 0.45))), 0.0), 10.0)
+                     + 0.45 * pow(max(dot(wN, normalize(vec3(0.7, 0.35, 0.6))), 0.0), 14.0);
+            chm += vec3(0.90, 0.97, 0.94) * kl * bev * 1.1;                     // platinum catch-lights on the facets
+          #endif
+          float fres = pow(1.0 - ndv, 3.0);
+          float core = exp(-dot(lp.xy, lp.xy) * 6.0);
+          float rl = dot(refr, vec3(0.3,0.5,0.2));
+          totalEmissiveRadiance += chm + refr * vec3(0.03, 0.40, 0.25) * 0.05 + refr * vec3(0.30, 0.85, 0.62) * smoothstep(1.2, 4.0, rl) * 0.06  // jade light from inside
+                                 + vec3(0.01, 0.07, 0.045) * core                        // soft inner glow
+                                 + vec3(0.18, 0.75, 0.52) * fres * 0.16                  // emerald fire on the chamfers
+                                 + vec3(0.82, 1.0, 0.92) * band * (0.04 + fres * 0.9)    // the light sweep
+                                 + vec3(0.35, 1.0, 0.72) * edgeGlow * 1.4;` : `
+          totalEmissiveRadiance += vec3(0.85,1.0,0.94) * band * 0.55 + vec3(0.35,1.0,0.72) * edgeGlow * 1.2;`}
+        }`);
+      sh.uniforms.uScaleInv = scaleInv;
+    };
+  }
+  const scaleInv = { value: 1 };
+  const gemMat = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color('#03170f'), metalness: 0.0, roughness: 0.035, ior: 1.62, reflectivity: 0.7,
+    specularIntensity: 1, specularColor: new THREE.Color('#c9ffe8'), clearcoat: 1, clearcoatRoughness: 0.03,
+    iridescence: 0.12, iridescenceIOR: 1.35, envMapIntensity: 1.25, flatShading: true
+  });
+  jewelize(gemMat, 'gem');
+  const gem = new THREE.Mesh(ngeo, gemMat);
+
+  const RING_R = .6, RING_T = .0055, RX = 1.24, RZ = -.2;
+  const ringMat = new THREE.MeshPhysicalMaterial({ color: new THREE.Color('#dfe9e4'), metalness: 1, roughness: 0.16, envMapIntensity: 1.3, clearcoat: .4 });
+  jewelize(ringMat, 'ring');
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(RING_R, RING_T, 10, 220), ringMat);
+  ring.rotation.set(RX, 0, RZ);
+
+  const jewel = new THREE.Group();
+  jewel.add(gem, ring);
+  scene.add(jewel);
+
+  // ---------- grains: sampled from the same outline, the same depth, the same ring ----------
+  const inPoly = (x, y) => { let c = false; for (let i = 0, j = NP.length - 1; i < NP.length; j = i++) { const [xi, yi] = NP[i], [xj, yj] = NP[j]; if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) c = !c; } return c; };
+  const edges = NP.map((p, i) => { const q = NP[(i + 1) % NP.length]; return { p, q, len: Math.hypot(q[0] - p[0], q[1] - p[1]) }; });
+  const per = edges.reduce((s, e) => s + e.len, 0);
+  // outward normal: polygon is clockwise in y-up space
+  const area = NP.reduce((s, p, i) => { const q = NP[(i + 1) % NP.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0);
+  const sgn = area > 0 ? 1 : -1;
+  const eul = new THREE.Euler(RX, 0, RZ), v3 = new THREE.Vector3();
 
   const aT = new Float32Array(COUNT * 3), aC = new Float32Array(COUNT * 3), aS = new Float32Array(COUNT * 4), aK = new Float32Array(COUNT);
-  let i = 0, guard = 0;
-  while (i < COUNT && guard++ < COUNT * 80) {
-    const x = Math.random() * R, y = Math.random() * R;
-    const o = ((y | 0) * R + (x | 0)) * 4;
-    const rC = px[o], gC = px[o + 1], bC = px[o + 2];
-    let cls = -1, p = 0;
-    if (gC > 128) { cls = 2; p = 1.0; } else if (rC > 128) { cls = 1; p = 0.95; } else if (bC > 128) { cls = 0; p = 0.085; }
-    if (cls < 0 || Math.random() > p) continue;
-    const tx = x / R - 0.5, ty = 0.5 - y / R;
-    const tz = cls === 0 ? 0 : 0.012;
-    aT.set([tx, ty, tz], i * 3);
-    // chaos: a wide, swirling cloud drifting in from the left
+  for (let i = 0; i < COUNT; i++) {
+    const r = Math.random();
+    let tx, ty, tz, cls;
+    if (r < .46) {            // polished face
+      cls = 0; do { tx = Math.random() * .7 - .35; ty = Math.random() * .74 - .37; } while (!inPoly(tx, ty));
+      tz = FRONT;
+    } else if (r < .82) {     // chamfered silhouette, through the thickness
+      cls = 1; let d = Math.random() * per, e = edges[0];
+      for (const ed of edges) { if (d <= ed.len) { e = ed; break; } d -= ed.len; }
+      const u = d / e.len, dx = (e.q[0] - e.p[0]) / e.len, dy = (e.q[1] - e.p[1]) / e.len;
+      const nx = dy * sgn, ny = -dx * sgn, off = Math.random() * BS;
+      tx = e.p[0] + (e.q[0] - e.p[0]) * u + nx * off; ty = e.p[1] + (e.q[1] - e.p[1]) * u + ny * off;
+      tz = FRONT - Math.pow(Math.random(), 1.6) * (DEPTH + BT * 2);
+    } else {                  // halo
+      cls = 2; const a = Math.random() * Math.PI * 2;
+      v3.set(Math.cos(a) * RING_R, Math.sin(a) * RING_R, (Math.random() - .5) * RING_T * 2).applyEuler(eul);
+      tx = v3.x; ty = v3.y; tz = v3.z;
+    }
+    aT[i * 3] = tx; aT[i * 3 + 1] = ty; aT[i * 3 + 2] = tz;
     const a = Math.random() * Math.PI * 2, rad = 0.6 + Math.pow(Math.random(), 0.6) * 2.2;
-    aC.set([tx - 1.4 + Math.cos(a) * rad, ty + Math.sin(a) * rad * 0.55, (Math.random() - 0.5) * 2.4], i * 3);
+    aC[i * 3] = tx - 1.4 + Math.cos(a) * rad; aC[i * 3 + 1] = ty + Math.sin(a) * rad * 0.55; aC[i * 3 + 2] = (Math.random() - 0.5) * 2.4;
     const delay = (tx + 0.5) * 0.42 + Math.random() * 0.22;
-    const bright = cls === 0 ? 0.35 + Math.random() * 0.4 : cls === 1 ? 0.75 + Math.random() * 0.5 : 0.55 + Math.random() * 0.55;
-    aS.set([delay, 0.6 + Math.random() * 0.9, bright, Math.random()], i * 4);
-    aK[i] = Math.random() < 0.012 ? 1 : 0; // a few emerald grains
-    i++;
+    const bright = cls === 0 ? 0.4 + Math.random() * 0.4 : cls === 1 ? 0.75 + Math.random() * 0.5 : 0.65 + Math.random() * 0.45;
+    aS[i * 4] = delay; aS[i * 4 + 1] = 0.6 + Math.random() * 0.9; aS[i * 4 + 2] = bright; aS[i * 4 + 3] = Math.random();
+    // platinum and emerald grains: jade through the body, platinum on the halo, a few bright jade sparks
+    const pe = cls === 0 ? .42 : cls === 1 ? .22 : .04;
+    aK[i] = Math.random() < pe ? (Math.random() < .06 ? 1.0 : .7) : 0;
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(aT, 3));
   geo.setAttribute('aChaos', new THREE.BufferAttribute(aC, 3));
   geo.setAttribute('aSeed', new THREE.BufferAttribute(aS, 4));
   geo.setAttribute('aEm', new THREE.BufferAttribute(aK, 1));
-  geo.setDrawRange(0, i);
+  let drawN = COUNT; geo.setDrawRange(0, drawN);
 
   const NOISE = `
   vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x,289.0);}
@@ -102,20 +216,16 @@ function start() {
     return normalize(vec3(x,y,z)/(2.0*e)+1e-5);
   }`;
 
-  const uniforms = {
-    uTime: { value: 0 }, uForm: { value: 0 }, uBlow: { value: 0 }, uSolid: { value: 0 },
-    uSweep: { value: -2 }, uLight: { value: new THREE.Vector2(-0.3, 0.35) }, uScale: { value: 3 },
-    uSize: { value: mobile ? 2.2 : 1.85 }, uDpr: { value: dpr }
-  };
+
   const mat = new THREE.ShaderMaterial({
-    uniforms, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
+    uniforms: U, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
     vertexShader: NOISE + `
       attribute vec3 aChaos; attribute vec4 aSeed; attribute float aEm;
-      uniform float uTime,uForm,uBlow,uSolid,uSweep,uScale,uSize,uDpr; uniform vec2 uLight;
+      uniform float uTime,uForm,uBlow,uSolid,uSweep,uSize,uDpr; uniform vec2 uLight;
       varying vec3 vCol; varying float vA; varying float vSpec;
       void main(){
         float f=clamp((uForm*1.75-aSeed.x)/1.0,0.0,1.0);
-        float fe=f>=1.0?1.0:1.0-pow(2.0,-10.0*f);            // expo-out: the site's one curve
+        float fe=f>=1.0?1.0:1.0-pow(2.0,-10.0*f);
         float xn=position.x+0.5;
         float b=clamp(uBlow*1.7-xn*0.55-aSeed.w*0.15,0.0,1.0);
         vec3 p=mix(aChaos,position,fe);
@@ -125,105 +235,114 @@ function start() {
           p+=c*(1.0-fe)*0.55;
           float bb=b*b;
           p+=(c*0.9+vec3(1.35,0.38,0.7))*bb*(1.2+aSeed.w);
-        } else {
-          p.xy+=0.0016*vec2(sin(uTime*1.3+aSeed.w*40.0),cos(uTime*1.1+aSeed.w*31.0));
         }
-        vec3 wp=p*uScale;
-        vec4 mv=modelViewMatrix*vec4(wp,1.0);
+        vec4 mv=modelViewMatrix*vec4(p,1.0);
         gl_Position=projectionMatrix*mv;
-        float dof=1.0+(1.0-fe)*abs(p.z)*0.9+b*0.6;            // grains in flight drift out of focus
+        float dof=1.0+(1.0-fe)*abs(p.z)*0.9+b*0.6;
         gl_PointSize=uSize*aSeed.y*uDpr*(10.0/-mv.z)*dof;
-        // metallic shading
         float br=aSeed.z*mix(0.55,1.0,fe);
-        float band=exp(-pow((dot(position.xy,vec2(0.788,-0.616))-uSweep)*7.0,2.0));   // the same 128deg light as the page
+        float band=exp(-pow((dot(position.xy,vec2(0.788,-0.616))-uSweep)*7.0,2.0));
         float glint=pow(aSeed.w,10.0);
         float l=exp(-dot(position.xy-uLight,position.xy-uLight)*7.0);
-        float k=br*0.30 + band*(0.55+glint*5.0) + l*0.22*br + (1.0-fe)*0.08;
-        k*=mix(1.0,0.32,uSolid*fe*(1.0-b));
-        vec3 base=mix(vec3(0.86,0.865,0.90),vec3(0.92,0.90,0.86),aSeed.w);
-        vCol=mix(base,vec3(0.30,0.60,0.50),aEm)*k;
+        float settle=uSolid*fe*(1.0-b);                 // once the jewel is solid, grains step back
+        float k=(br*0.30 + l*0.22*br + (1.0-fe)*0.08)*mix(1.0,0.02,settle) + band*(0.55+glint*5.0)*mix(1.0,0.18,settle);
+        vec3 plat=mix(vec3(0.86,0.89,0.88),vec3(0.93,0.92,0.88),aSeed.w);
+        vec3 jade=mix(vec3(0.22,0.66,0.47),vec3(0.55,0.95,0.76),step(0.95,aEm));
+        vCol=mix(plat,jade,step(0.5,aEm))*k;
         vA=(1.0-smoothstep(0.55,1.0,b))*smoothstep(0.0,0.08,uForm+0.02)/(dof*dof);
-        vSpec=band*(0.4+glint*2.0);
+        vSpec=band*(0.4+glint*2.0)*mix(1.0,0.25,settle);
       }`,
     fragmentShader: `
       varying vec3 vCol; varying float vA; varying float vSpec;
       void main(){
         vec2 d=gl_PointCoord-0.5; float r=length(d);
         if(r>0.5) discard;
-        float body=smoothstep(0.5,0.0,r); body*=body;                       // soft round grain
-        float core=exp(-r*r*60.0);                                          // crisp centre
-        float spec=exp(-dot(d-vec2(-0.12,-0.14),d-vec2(-0.12,-0.14))*140.0); // tiny lit facet toward the light
-        vec3 c=vCol*(body*0.75+core*0.55)+vec3(1.0,0.99,0.97)*spec*(0.10+vSpec)*vA;
+        float body=smoothstep(0.5,0.0,r); body*=body;
+        float core=exp(-r*r*60.0);
+        float spec=exp(-dot(d-vec2(-0.12,-0.14),d-vec2(-0.12,-0.14))*140.0);
+        vec3 c=vCol*(body*0.75+core*0.55)+vec3(0.92,1.0,0.96)*spec*(0.10+vSpec)*vA;
         gl_FragColor=vec4(c*vA,1.0);
       }`
   });
   const pts = new THREE.Points(geo, mat);
-  scene.add(pts);
+  pts.renderOrder = 2;
+  jewel.add(pts);
 
-  // ---- sizing: keep the CSS emblem exactly over the particle emblem ----
+  // ---------- sizing ----------
   let W = 0, H = 0, emPx = 300;
+  const tanH = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
   function resize() {
     W = innerWidth; H = sticky.clientHeight || innerHeight;
     renderer.setSize(W, H, false);
     camera.aspect = W / H; camera.updateProjectionMatrix();
-    emPx = mobile || W < 760 ? Math.min(W * 0.62, H * 0.36) : Math.min(H * 0.5, W * 0.36, 500);
+    emPx = mobile || W < 760 ? Math.min(W * 0.66, H * 0.4) : Math.min(H * 0.56, W * 0.38, 540);
+    const s = emPx / H * 2 * Z0 * tanH;
+    jewel.scale.setScalar(s); scaleInv.value = 1 / s;
+    setVar('--em', emPx.toFixed(1) + 'px');
   }
-  resize(); addEventListener('resize', resize);
-  const tanH = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+  const last = {};
+  function setVar(k, v) { if (last[k] !== v) { last[k] = v; sticky.style.setProperty(k, v); } }
+  resize(); addEventListener('resize', resize, { passive: true });
 
-  // ---- input ----
+  // ---------- input ----------
   const m = { x: 0, y: 0, tx: 0, ty: 0 };
   if (matchMedia('(pointer:fine)').matches) addEventListener('pointermove', e => { m.tx = e.clientX / W * 2 - 1; m.ty = e.clientY / H * 2 - 1; }, { passive: true });
 
   const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   const easeIO = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  const NX = window.NX; if (NX) NX.restart();
-  let t0 = NX ? NX.t0 : performance.now(), visible = true, pScroll = 0, pSm = 0, lastNow = 0;
-  document.addEventListener('visibilitychange', () => { visible = !document.hidden; if (visible) requestAnimationFrame(loop); });
+  NX.restart();
 
-  function loop(now) {
-    if (!visible) return;
-    requestAnimationFrame(loop);
-    const t = (now - (NX ? NX.t0 : t0)) / 1000;
-    const dt = Math.min(0.05, lastNow ? (now - lastNow) / 1000 : 1 / 60); lastNow = now;
-    const r = stage.getBoundingClientRect();
-    pScroll = Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - H)));
-    pSm += (pScroll - pSm) * (1 - Math.exp(-dt * 7.5));              // frame-rate independent
+  // pause completely when the stage is off screen
+  let inView = true;
+  new IntersectionObserver(es => { inView = es[0].isIntersecting; }, { rootMargin: '80px' }).observe(stage);
+
+  // adaptive quality: watch real frame time, shed grains first, then resolution
+  let ema = 1 / 60, slow = 0, fast = 0, frames = 0;
+  function adapt(dt) {
+    frames++; if (frames < 40) return;                  // ignore warm-up
+    ema += (dt - ema) * 0.05;
+    if (ema > 1 / 50) { slow += dt; fast = 0; } else if (ema < 1 / 57) { fast += dt; slow = 0; } else { slow = fast = 0; }
+    if (slow > 0.6) {
+      slow = 0;
+      if (drawN > COUNT * .4) { drawN = Math.round(drawN * .8); geo.setDrawRange(0, drawN); }
+      else if (dpr > 1) { dpr = Math.max(1, dpr - .25); renderer.setPixelRatio(dpr); U.uDpr.value = dpr; renderer.setSize(W, H, false); }
+    } else if (fast > 4 && drawN < COUNT) { fast = 0; drawN = Math.min(COUNT, Math.round(drawN * 1.1)); geo.setDrawRange(0, drawN); }
+  }
+  window.__hero = { get count() { return drawN; }, get dpr() { return dpr; }, get ema() { return ema; } };
+
+  let r = null, pSm = 0;
+  NX.read(() => { r = inView ? stage.getBoundingClientRect() : null; });
+  NX.on((now, dt, t) => {
+    if (!r) return;
+    adapt(dt);
+    const pScroll = Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - H)));
+    pSm += (pScroll - pSm) * (1 - Math.exp(-dt * 7.5));
     const p = pSm;
-    if (r.bottom < -50) return; // stage offscreen
+    if (r.bottom < -50) return;
 
     const km = 1 - Math.exp(-dt * 2.2); m.x += (m.tx - m.x) * km; m.y += (m.ty - m.y) * km;
-    // slow majestic dolly
     const z = Z0 + (Z1 - Z0) * easeIO(Math.min(1, t / 26)) - p * 0.6;
     camera.position.set(m.x * 0.18, -m.y * 0.12, z); camera.lookAt(0, 0, 0);
-    // world size so the grains land exactly on the CSS emblem (which is scaled by Z0/z)
-    uniforms.uScale.value = emPx / H * 2 * Z0 * tanH;
-    pts.rotation.y = m.x * 0.1; pts.rotation.x = m.y * 0.08;
+    // a slow, weighty turn once formed: the facets catch the soft boxes
+    const idle = sm(4.5, 7, t);
+    jewel.rotation.y = m.x * 0.16 + Math.sin(t * 0.21) * 0.10 * idle;
+    jewel.rotation.x = m.y * 0.10 + Math.sin(t * 0.17 + 1.3) * 0.045 * idle;
 
     const form = Math.min(1, Math.max(0, (t - 0.35) / 4.4));
-    uniforms.uTime.value = t; uniforms.uForm.value = form;
-    const solid = sm(3.3, 5.2, t) * (1 - sm(0.03, 0.22, p));
-    uniforms.uSolid.value = sm(3.3, 5.2, t);
-    uniforms.uBlow.value = sm(0.02, 0.5, p);
-    // the page's global light band, mapped into emblem space (same direction, same cadence)
-    const D = NX ? NX.bandAt(t, W, innerHeight) : null;
+    U.uTime.value = t; U.uForm.value = form;
+    U.uSolid.value = sm(3.0, 5.4, t);
+    U.uBlow.value = sm(0.02, 0.5, p);
+    const D = NX.bandAt(t, W, innerHeight);
     const S = emPx * Z0 / z, Dc = (W / 2) * 0.788 + (r.top + H / 2 > 0 ? H / 2 : 0) * 0.616;
-    uniforms.uSweep.value = D == null ? -9 : (D - Dc) / S;
-    const lx = m.x * 0.5 - 0.15, ly = -m.y * 0.5 + 0.2;
-    uniforms.uLight.value.set(lx, ly);
+    U.uSweep.value = D == null ? -9 : (D - Dc) / S;
+    U.uLight.value.set(m.x * 0.5 - 0.15, -m.y * 0.5 + 0.2);
+    gem.visible = ring.visible = U.uSolid.value > 0.001 && U.uBlow.value < 0.999;
 
-    // CSS hand-off
-    sticky.style.setProperty('--em', (emPx).toFixed(1) + 'px');
-    emWrap.style.transform = `scale(${(Z0 / z).toFixed(4)})`;
-    sticky.style.setProperty('--solid', solid.toFixed(3));
-    sticky.style.setProperty('--intro', (sm(4.6, 6.0, t) * (1 - sm(0.0, 0.07, p))).toFixed(3));
-    sticky.style.setProperty('--hp', sm(0.2, 0.5, p).toFixed(3));
-    sticky.style.setProperty('--hs', (0.0 + sm(0.2, 0.8, p) * 1.3).toFixed(3));
-    sticky.style.setProperty('--lp', sm(0.42, 0.62, p).toFixed(3));
-    emblem.style.setProperty('--ry', (m.x * 6).toFixed(2) + 'deg');
-    emblem.style.setProperty('--rx', (-m.y * 5).toFixed(2) + 'deg');
-
+    setVar('--solid', (sm(3.3, 5.6, t) * (1 - sm(0.03, 0.22, p))).toFixed(2));
+    setVar('--intro', (sm(4.8, 6.2, t) * (1 - sm(0.0, 0.07, p))).toFixed(3));
+    setVar('--hp', sm(0.2, 0.5, p).toFixed(3));
+    setVar('--hs', (sm(0.2, 0.8, p) * 1.3).toFixed(3));
+    setVar('--lp', sm(0.42, 0.62, p).toFixed(3));
     renderer.render(scene, camera);
-  }
-  requestAnimationFrame(loop);
+  });
 }

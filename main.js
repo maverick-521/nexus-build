@@ -1,4 +1,4 @@
-/* Nexus Build v4 — one clock, one curve, one light.
+/* Nexus Build v5 — one clock, one curve, one light, one rAF loop.
    NX: shared timing (expo-out everywhere, cubic in-out for the light), a single
    global light band that travels top-left → bottom-right across the viewport,
    Lenis scroll, magnetic buttons, parallax and the liquid glass controls. */
@@ -27,8 +27,9 @@
       return -420 + NX.easeIO(ph / NX.DUR) * (W * DIR[0] + H * DIR[1] + 840);
     },
     DIR,
-    ticks: new Set(),
-    on(f) { NX.ticks.add(f); return () => NX.ticks.delete(f); },
+    ticks: new Set(), reads: new Set(),
+    on(f) { NX.ticks.add(f); return () => NX.ticks.delete(f); },      // write phase
+    read(f) { NX.reads.add(f); return () => NX.reads.delete(f); },    // read phase (runs first, no writes)
     lenis: null,
     scrollTo(target, opts = {}) {
       const el = typeof target === 'string' ? (target === '#top' ? 0 : document.querySelector(target)) : target;
@@ -44,7 +45,7 @@
 
   /* ---------- Lenis ---------- */
   if (!reduce && window.Lenis) {
-    NX.lenis = new Lenis({ duration: 1.15, easing: NX.expoOut, smoothWheel: true, wheelMultiplier: .95, touchMultiplier: 1 });
+    NX.lenis = new Lenis({ lerp: .08, smoothWheel: true, wheelMultiplier: .95, touchMultiplier: 1 });
   }
   document.addEventListener('click', e => {
     const a = e.target.closest('a[href^="#"]');
@@ -59,6 +60,26 @@
     if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
   }), { threshold: 0.15, rootMargin: '0px 0px -6% 0px' });
   document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  /* ---------- layout cache: document-space boxes, refreshed only when layout changes ---------- */
+  // Per-frame code never calls getBoundingClientRect on these; it uses cached boxes + the scroll offset.
+  let layoutGen = 0;
+  const bumpLayout = () => { layoutGen++; };
+  addEventListener('resize', bumpLayout, { passive: true });
+  new ResizeObserver(bumpLayout).observe(document.body);
+  document.fonts && document.fonts.ready.then(bumpLayout);
+  const boxCache = new WeakMap();
+  const docBox = el => {
+    let c = boxCache.get(el);
+    if (!c || c.g !== layoutGen) {
+      const r = el.getBoundingClientRect(), fixed = !!el.closest('.nav-wrap');
+      c = { g: layoutGen, l: r.left + (fixed ? 0 : scrollX), t: r.top + (fixed ? 0 : scrollY), h: r.height, fixed };
+      boxCache.set(el, c);
+    }
+    return c;
+  };
+  NX.docBox = docBox; NX.bumpLayout = bumpLayout;
+  const sy = () => NX.lenis ? NX.lenis.animatedScroll : scrollY;
 
   /* ---------- global light band targets ---------- */
   const sweepEls = new Set();
@@ -75,10 +96,10 @@
       return;
     }
     bandWasOn = true;
-    const list = [...sweepEls], rs = list.map(el => el.getBoundingClientRect());   // read all, then write all
-    for (let i = 0; i < list.length; i++) {
-      const r = rs[i];
-      list[i].style.setProperty('--band', (D - (r.left * DIR[0] + r.top * DIR[1])).toFixed(1) + 'px');
+    const y = scrollY;
+    for (const el of sweepEls) {
+      const b = docBox(el), top = b.fixed ? b.t : b.t - y;
+      el.style.setProperty('--band', Math.round(D - (b.l * DIR[0] + top * DIR[1])) + 'px');
     }
   }
 
@@ -105,13 +126,17 @@
   /* ---------- the frame loop ---------- */
   const steps = document.querySelector('.steps');
   let last = performance.now();
+  let visible = !document.hidden;
+  document.addEventListener('visibilitychange', () => { visible = !document.hidden; if (visible) { last = performance.now(); requestAnimationFrame(frame); } });
   function frame(now) {
+    if (!visible) return;
     requestAnimationFrame(frame);
-    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    const dt = Math.min(.05, Math.max(0, now - last) / 1000); last = now;
     if (NX.lenis) NX.lenis.raf(now);
     const t = NX.time(now);
-    sweep(t);
-    const vh = innerHeight;
+    NX.reads.forEach(f => f(now, dt, t));          // 1. read
+    sweep(t);                                       // 2. write (from cached boxes only)
+    const vh = innerHeight, y = scrollY;
     for (const m of mags) {
       const k = 1 - Math.exp(-dt * 10);
       m.x += (m.tx - m.x) * k; m.y += (m.ty - m.y) * k;
@@ -120,13 +145,14 @@
       }
     }
     for (const p of deps) {
-      const r = p.el.parentElement.getBoundingClientRect();
-      if (r.bottom < -200 || r.top > vh + 200) continue;
-      p.el.style.setProperty('--py', ((r.top + r.height / 2 - vh / 2) * -p.d).toFixed(1) + 'px');
+      const b = docBox(p.el.parentElement), top = b.t - y;
+      if (top + b.h < -200 || top > vh + 200) continue;
+      const v = ((top + b.h / 2 - vh / 2) * -p.d).toFixed(1);
+      if (v !== p.v) { p.v = v; p.el.style.setProperty('--py', v + 'px'); }
     }
     if (steps && !reduce) {
-      const r = steps.getBoundingClientRect();
-      steps.style.setProperty('--progress', clamp((vh * .82 - r.top) / (vh * .5), 0, 1).toFixed(3));
+      const top = docBox(steps).t - y, v = clamp((vh * .82 - top) / (vh * .5), 0, 1).toFixed(3);
+      if (v !== steps._v) { steps._v = v; steps.style.setProperty('--progress', v); }
     }
     NX.ticks.forEach(f => f(now, dt, t));
   }
@@ -142,13 +168,13 @@
     if (mapURL) return mapURL;
     const mw = 320, mh = 120, c = document.createElement('canvas'); c.width = mw; c.height = mh;
     const g = c.getContext('2d'), img = g.createImageData(mw, mh), d = img.data;
-    const r = mh / 2, cx = mw / 2, cy = mh / 2, bez = r * .62;
+    const r = mh / 2, cx = mw / 2, cy = mh / 2, bez = r * .5;
     for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) {
       const qx = Math.max(Math.abs(x + .5 - cx) - (mw / 2 - r), 0) * Math.sign(x + .5 - cx), qy = y + .5 - cy;
       const len = Math.hypot(qx, qy) || 1e-6, e = r - len;      // distance inside the rim
       const k = clamp(1 - e / bez, 0, 1), s = k * k * (3 - 2 * k) * k;   // refraction rises steeply at the rim
       let dx = qx / len * s, dy = qy / len * s;
-      dx -= (x + .5 - cx) / (mw / 2) * .10; dy -= qy / r * .10;     // a little magnification in the body
+      dx -= (x + .5 - cx) / (mw / 2) * .05; dy -= qy / r * .05;     // a little magnification in the body
       const o = (y * mw + x) * 4;
       d[o] = 128 + clamp(dx, -1, 1) * 127; d[o + 1] = 128 + clamp(dy, -1, 1) * 127; d[o + 2] = 128; d[o + 3] = 255;
     }
@@ -172,19 +198,20 @@
       if (Math.abs(w - lw) < .75 && Math.abs(h - lh) < .75) return;
       lw = w; lh = h;
       for (const el of [f, im]) { el.setAttribute('width', w.toFixed(1)); el.setAttribute('height', h.toFixed(1)); }
-      dm.setAttribute('scale', (h * .55).toFixed(1));
+      dm.setAttribute('scale', (h * .26).toFixed(1));
     };
   }
 
   /* A lens carried between options: follows the finger, stretches with speed,
      settles on a soft spring, and commits on release. Transform/opacity only. */
-  function liquid(el, { initial = 0, onCommit = () => {}, onMove = null, links = false } = {}) {
+  function liquid(el, { initial = 0, onCommit = () => {}, onMove = null, onRun = null, links = false } = {}) {
     const lens = el.querySelector('.lg-lens'), opts = [...el.querySelectorAll('.lg-opt')], n = opts.length;
     const scroller = el.parentElement.classList.contains('lg-scroll') ? el.parentElement : null;
     const sizeFilter = refract ? makeFilter(lens) : null;
     let geo = [], sel = initial, x = 0, w = 0, vx = 0, vw = 0, tx = 0, tw = 0, lo = initial < 0 ? 0 : 1, tlo = lo;
-    let press = null, drag = false, grab = 0, px = 0, pressAmt = 0, running = false, lastSet = '', lastW = -1, H = 40;
-    const measure = () => { geo = opts.map(o => ({ c: o.offsetLeft + o.offsetWidth / 2, w: o.offsetWidth })); H = opts[0].offsetHeight; };
+    let press = null, drag = false, grab = 0, px = 0, pressAmt = 0, running = false, lastSet = '', lastW = -1, H = 40, elL = 0;
+    const measure = () => { geo = opts.map(o => ({ c: o.offsetLeft + o.offsetWidth / 2, w: o.offsetWidth })); H = opts[0].offsetHeight; elL = el.offsetLeft; };
+    const setRun = on => { if (on === running) return; running = on; el.classList.toggle('moving', on); onRun && onRun(on); };
     const widthAt = cx => {
       if (cx <= geo[0].c) return geo[0].w;
       for (let i = 0; i < n - 1; i++) if (cx <= geo[i + 1].c) { const f = (cx - geo[i].c) / (geo[i + 1].c - geo[i].c); return geo[i].w + (geo[i + 1].w - geo[i].w) * f; }
@@ -214,7 +241,7 @@
       opts.forEach((o, k) => o.style.setProperty('--on', (lo * Math.max(0, 1 - Math.abs(x - geo[k].c) / (geo[k].w * .9))).toFixed(3)));
       onMove && onMove(idxF(x), lo);
       if (scroller && (drag || running)) {   // keep the lens in view inside a scrolling track
-        const L = el.offsetLeft + x - scroller.scrollLeft, SW = scroller.clientWidth, m = Math.min(90, SW * .2);
+        const L = elL + x - scroller.scrollLeft, SW = scroller.clientWidth, m = Math.min(90, SW * .2);
         if (L < m) scroller.scrollLeft -= Math.min(18, (m - L) * .25); else if (L > SW - m) scroller.scrollLeft += Math.min(18, (L - SW + m) * .25);
       }
     }
@@ -231,12 +258,12 @@
       pressAmt += ((press ? 1 : 0) - pressAmt) * (1 - Math.exp(-dt * 14));
       lo += (tlo - lo) * (1 - Math.exp(-dt * 10));
       if (!drag && !press && Math.abs(tx - x) < .05 && Math.abs(vx) < 2 && Math.abs(tw - w) < .05 && pressAmt < .002 && Math.abs(tlo - lo) < .002) {
-        x = tx; w = tw; vx = 0; pressAmt = 0; lo = tlo; running = false;
+        x = tx; w = tw; vx = 0; pressAmt = 0; lo = tlo; setRun(false);
       }
       paint();
     }
     NX.on(tick);
-    const go = () => { if (reduce) { x = tx; w = tw; vx = 0; lo = tlo; pressAmt = 0; paint(); return; } running = true; };
+    const go = () => { if (reduce) { x = tx; w = tw; vx = 0; lo = tlo; pressAmt = 0; paint(); return; } setRun(true); };
     const mark = i => opts.forEach((o, k) => {
       if (links) { k === i ? o.setAttribute('aria-current', 'true') : o.removeAttribute('aria-current'); return; }
       const on = k === i ? 'true' : 'false';
@@ -257,7 +284,7 @@
       if (e.button !== 0 || press) return;
       measure();
       const lx = localX(e), on = nearest(lx);
-      press = { id: e.pointerId, x0: e.clientX, y0: e.clientY, on };
+      press = { id: e.pointerId, x0: e.clientX, y0: e.clientY, on, lx };
       drag = false; px = lx;
       if (lo < .05) { x = geo[on].c; w = geo[on].w; }      // appear where pressed
       tlo = 1; tx = geo[on].c; tw = geo[on].w;
@@ -271,7 +298,7 @@
       if (!drag) {
         if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { return; }
         if (Math.abs(dx) < 4) return;
-        drag = true; el.classList.add('is-drag'); grab = clamp(localX(e) - x, -w / 2, w / 2);
+        drag = true; el.classList.add('is-drag'); const g0 = press.lx - x; grab = Math.abs(g0) <= w / 2 ? g0 : 0;   // grab the lens where you hold it; elsewhere it comes to the finger
       }
       px = localX(e); go();
     });
@@ -281,7 +308,7 @@
       press = null; drag = false; el.classList.remove('is-drag');
       try { el.releasePointerCapture(e.pointerId); } catch (_) {}
       if (cancel) { set(sel); return; }
-      const proj = x + clamp(vx * .09, -140, 140);           // a flick carries a little further
+      const proj = x + clamp(vx * .05, -90, 90);           // a flick carries a little further
       const i = wasDrag ? nearest(proj) : on;
       set(i, { commit: true });
     };
@@ -308,7 +335,19 @@
     ro.observe(el);
     measure(); if (sel >= 0) { x = tx = geo[sel].c; w = tw = geo[sel].w; } else { x = geo[0].c; w = geo[0].w; }
     mark(sel); paint();
-    return { set, get sel() { return sel; }, el };
+    // external scrub (panel swipe): fractional index in, spring snap out
+    const posAt = f => {
+      if (f <= 0) return geo[0].c + f * (n > 1 ? geo[1].c - geo[0].c : 60);
+      if (f >= n - 1) return geo[n - 1].c + (f - n + 1) * (n > 1 ? geo[n - 1].c - geo[n - 2].c : 60);
+      const i = Math.floor(f), u = f - i; return geo[i].c + (geo[i + 1].c - geo[i].c) * u;
+    };
+    let f0 = 0;
+    const scrub = {
+      start() { measure(); f0 = sel; drag = true; grab = 0; px = x; el.classList.add('is-drag'); go(); },
+      move(df) { if (!drag) return; px = posAt(f0 + df); go(); },
+      end(fl = 0) { if (!drag) return; drag = false; el.classList.remove('is-drag'); set(clamp(Math.round(idxF(x) + fl), 0, n - 1), { commit: true }); }
+    };
+    return { set, get sel() { return sel; }, el, scrub };
   }
   NX.liquid = liquid;
 
@@ -323,8 +362,8 @@
   const secs = navIds.map(id => document.querySelector(id));
   if (nav) NX.on(() => {
     if (spyLock) return;
-    const y = innerHeight * .42; let cur = -1;
-    secs.forEach((s, i) => { if (s && s.getBoundingClientRect().top <= y) cur = i; });
+    const y = innerHeight * .42, sc = scrollY; let cur = -1;
+    secs.forEach((s, i) => { if (s && docBox(s).t - sc <= y) cur = i; });
     if (cur !== nav.sel) nav.set(cur);
   });
 
@@ -335,15 +374,16 @@
   panels.forEach(p => p.removeAttribute('hidden'));
   const svEl = document.querySelector('[data-lg="services"]');
   let lastP = -1;
+  const switcherEl = document.querySelector('.switcher');
   const services = svEl && liquid(svEl, {
     initial: 0,
+    onRun: on => switcherEl && switcherEl.classList.toggle('moving', on),
     onMove: p => {
       if (Math.abs(p - lastP) < .0005) return; lastP = p;
       panels.forEach((el, k) => {
         const d = p - k, a = Math.abs(d), o = reduce ? (a < .5 ? 1 : 0) : Math.pow(clamp(1 - a * 1.7, 0, 1), 1.4);
         el.style.setProperty('--o', o.toFixed(3));
         el.style.setProperty('--x', (-d * 90).toFixed(1) + 'px');
-        el.style.setProperty('--b', Math.min(a * 6, 4).toFixed(2) + 'px');
         el.classList.toggle('off', o < .002);
       });
       svLight && svLight.style.setProperty('--lx', (-p * 26).toFixed(1) + 'px');
@@ -353,6 +393,40 @@
       cards.forEach((c, k) => c.classList.toggle('active', k === i));
     }
   });
+  /* swipe the panel itself: it drags the lens, the lens drags the panels */
+  const stageEl = document.querySelector('.sv-stage');
+  if (services && stageEl) {
+    let sw = null;
+    stageEl.addEventListener('pointerdown', e => {
+      if (e.button !== 0 || sw || e.target.closest('a,button')) return;
+      sw = { id: e.pointerId, x0: e.clientX, y0: e.clientY, on: false, W: stageEl.clientWidth, hx: [[e.timeStamp, e.clientX]] };
+    });
+    stageEl.addEventListener('pointermove', e => {
+      if (!sw || e.pointerId !== sw.id) return;
+      const dx = e.clientX - sw.x0, dy = e.clientY - sw.y0;
+      if (!sw.on) {
+        if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { sw = null; return; }
+        if (Math.abs(dx) < 8) return;
+        sw.on = true; try { stageEl.setPointerCapture(e.pointerId); } catch (_) {}
+        stageEl.classList.add('swiping'); getSelection && getSelection().removeAllRanges();
+        services.scrub.start();
+      }
+      sw.hx.push([e.timeStamp, e.clientX]); if (sw.hx.length > 6) sw.hx.shift();
+      services.scrub.move(-dx / (sw.W * .6));
+    });
+    const swEnd = e => {
+      if (!sw || e.pointerId !== sw.id) return;
+      const s = sw; sw = null;
+      if (!s.on) return;
+      stageEl.classList.remove('swiping');
+      try { stageEl.releasePointerCapture(e.pointerId); } catch (_) {}
+      const a = s.hx[0], b = s.hx[s.hx.length - 1], v = (b[1] - a[1]) / Math.max(16, b[0] - a[0]) * 1000;   // px/s
+      services.scrub.end(clamp(-v / s.W * .35, -1, 1) * (Math.abs(v) > 250 ? 1 : 0));
+    };
+    stageEl.addEventListener('pointerup', swEnd);
+    stageEl.addEventListener('pointercancel', swEnd);
+    stageEl.addEventListener('dragstart', e => e.preventDefault());
+  }
   if (services) {
     panels.forEach((el, k) => { el.toggleAttribute('inert', k !== 0); el.setAttribute('aria-hidden', k ? 'true' : 'false'); });
     cards[0] && cards[0].classList.add('active');
@@ -388,16 +462,16 @@
   /* contact: pick what you need, the email button follows */
   const cBtn = document.getElementById('contact-btn');
   const cEl = document.querySelector('[data-lg="contact"]');
-  const article = s => ({ 'AI assistant': 'an AI assistant', 'Bot': 'a bot', 'Automation': 'an automation', 'Scraping': 'a scraping project', 'Website': 'a website', 'Web app': 'a web app' }[s] || 'your project');
+  const article = s => ({ 'AI assistant': 'an AI assistant', 'Bot': 'a bot', 'Automation': 'an automation', 'Scraping': 'a scraping project', 'Website': 'a website or web app', 'Web app': 'a web app' }[s] || 'your project');
   cEl && cBtn && liquid(cEl, {
     initial: 0,
     onCommit: (i, o) => {
       const s = o.dataset.subj, lbl = cBtn.querySelector('.lbl');
       cBtn.href = `mailto:nexusbuild@mail.grokbot.com?subject=${encodeURIComponent(s + ' project')}`;
       if (reduce) { lbl.textContent = 'Email about ' + article(s); return; }
-      lbl.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(4px)' }], { duration: 220, easing: 'ease-in', fill: 'forwards' }).onfinish = () => {
+      lbl.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 200, easing: 'ease-in', fill: 'forwards' }).onfinish = () => {
         lbl.textContent = 'Email about ' + article(s);
-        lbl.animate([{ opacity: 0, filter: 'blur(4px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 700, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'forwards' });
+        lbl.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 700, easing: 'cubic-bezier(.34,1.56,.64,1)', fill: 'forwards' });
       };
     }
   });
