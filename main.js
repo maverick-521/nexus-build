@@ -1,4 +1,4 @@
-/* Nexus Studio v8 — one clock, one curve, one light, one rAF loop.
+/* Nexus Studio v9 — one clock, one curve, one light, one rAF loop.
    NX: shared timing (expo-out everywhere, cubic in-out for the light), a single
    global light band that travels top-left → bottom-right across the viewport,
    Lenis scroll, magnetic buttons, parallax and the liquid glass controls. */
@@ -141,7 +141,7 @@
   // v8: replaces the per-card cursor gradient (a repaint per pointermove per card, restarting on every card).
   // A single plate springs between cards: critically damped, transform + opacity only, boxes read on enter only.
   const hovers = [];
-  if (fine && !reduce) document.querySelectorAll('.glance, .why-grid').forEach(grid => {
+  if (fine && !reduce) document.querySelectorAll('.glance, .why-grid, .work-grid').forEach(grid => {
     const hl = document.createElement('div'); hl.className = 'hl'; hl.setAttribute('aria-hidden', 'true');
     hl.innerHTML = '<i class="hl-l"></i><i class="hl-m"></i><i class="hl-r"></i>';
     grid.prepend(hl);
@@ -149,14 +149,14 @@
     const H = { grid, hl, L, M, R, on: false, x: 0, y: 0, w: 0, h: 0, o: 0, vx: 0, vy: 0, vw: 0, vh: 0, vo: 0, tx: 0, ty: 0, tw: 0, th: 0, to: 0, h0: 0, idle: true, leaveT: 0 };
     const target = card => {
       const g = grid.getBoundingClientRect(), r = card.getBoundingClientRect();
-      H.tx = r.left - g.left; H.ty = r.top - g.top; H.tw = r.width; H.th = r.height; H.to = 1;
+      H.tx = r.left - g.left + grid.scrollLeft; H.ty = r.top - g.top; H.tw = r.width; H.th = r.height; H.to = 1;
       if (!H.h0) { H.h0 = r.height; H.hl.style.height = r.height + 'px'; }
       if (H.o < .02) { H.x = H.tx; H.y = H.ty; H.w = H.tw; H.h = H.th; H.vx = H.vy = H.vw = H.vh = 0; }   // first entry: appear in place
       H.idle = false; clearTimeout(H.leaveT);
     };
-    grid.addEventListener('pointerover', e => { const c = e.target.closest('.gl-card, .why-item'); if (c && grid.contains(c)) target(c); });
+    grid.addEventListener('pointerover', e => { const c = e.target.closest('.gl-card, .why-item, .wk-card'); if (c && grid.contains(c)) target(c); });
     grid.addEventListener('pointerleave', () => { H.leaveT = setTimeout(() => { H.to = 0; H.idle = false; }, 60); });
-    grid.addEventListener('focusin', e => { const c = e.target.closest('.gl-card, .why-item'); if (c) target(c); });
+    grid.addEventListener('focusin', e => { const c = e.target.closest('.gl-card, .why-item, .wk-card'); if (c) target(c); });
     grid.addEventListener('focusout', () => { H.to = 0; H.idle = false; });
     hovers.push(H);
   });
@@ -434,11 +434,13 @@
     initial: -1, links: true,
     onCommit: i => { spyLock = true; NX.scrollTo(navIds[i], { onComplete: () => { spyLock = false; } }); setTimeout(() => spyLock = false, 2200); }
   });
-  const secs = navIds.map(id => document.querySelector(id));
+  // v9: spy over every section in reading order, so the lens rests only on the section you are actually in.
+  // Sections without a nav item (Why, FAQ, How to start) fade the lens out instead of leaving it on the previous item.
+  const secs = [...document.querySelectorAll('main > section[id]')].filter(s => s.id !== 'top').map(s => ({ s, i: navIds.indexOf('#' + s.id) }));
   if (nav) NX.on(() => {
     if (spyLock) return;
     const y = innerHeight * .42, sc = scrollY; let cur = -1;
-    secs.forEach((s, i) => { if (s && docBox(s).t - sc <= y) cur = i; });
+    for (const o of secs) { if (docBox(o.s).t - sc <= y) cur = o.i; else break; }
     if (cur !== nav.sel) nav.set(cur);
   });
 
