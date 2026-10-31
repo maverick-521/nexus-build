@@ -1,5 +1,11 @@
 import * as THREE from 'three';
-/* v12e: timing only: a quicker gathering (mark formed by ~5.9s, was 8.6s), first sheen at 6.6s, and a slower vanish:
+/* v12f: the settled mark is 100% clean and mirror-polished. Every grain that lands on the badge (face, chamfers, ring) crossfades out
+   completely once the mark is formed (4.6–7.0s) and only returns as the mark peels away on scroll; the residual shimmer now lives
+   in a sparse ring of dust off the badge. The brushed-noise texture is gone: the face is a smooth, gradient-only polished steel
+   (near-white sky bands, a razor horizon reflection that shifts as the badge turns, cooler steel-blue below) with a crisp bright
+   bevel. After forming, a narrow specular glint crosses it like sun on a blade (flaring where it crosses an edge), repeating
+   softly every 8s. The page grain overlay is masked out over the badge (hero.js sets --gmask), and the canvas runs at full DPR (cap 3).
+   v12e: timing only: a quicker gathering (mark formed by ~5.9s, was 8.6s), first sheen at 6.6s, and a slower vanish:
    loose grains fade over ~7.2s (was ~3.6s), the shimmer eases to its residual over ~19s (was ~9.4s), and scroll dispersal trails the scroll for a longer drift.
    v12d (Swell master mark): a slower, eased grain gathering (about 8.5s) that never just vanishes: a fine shimmer lingers on and around the mark,
    then settles to a permanent residual texture. The mark reads as brushed platinum with one light direction (top left),
@@ -36,7 +42,7 @@ function start() {
   const mobile = innerWidth < 760 || matchMedia('(pointer:coarse)').matches;
   const COUNT = mobile ? 16000 : 40000;
   // v8: DPR is decided once (1.5 cap) and never changed while the N is on screen: a resize mid-assembly was one of the 'flick' sources
-  const DPR_MAX = Math.min(devicePixelRatio || 1, 2);   // v12d: up to 2x for pixel-crisp edges
+  const DPR_MAX = Math.min(devicePixelRatio || 1, 3);   // v12f: full device pixel ratio (cap 3) for a vector-crisp mark
   let dpr = DPR_MAX;
   renderer.setPixelRatio(dpr);
   renderer.setClearColor(0x000000, 0);
@@ -85,17 +91,17 @@ function start() {
   const U = {
     uTime: { value: 0 }, uForm: { value: 0 }, uBlow: { value: 0 }, uSolid: { value: 0 },
     uSweep: { value: -9 }, uLight: { value: new THREE.Vector2(-0.3, 0.35) },
-    uSize: { value: mobile ? 2.9 : 2.5 }, uDpr: { value: dpr }, uKeep: { value: 1.001 }, uLinger: { value: 1 }, uFade: { value: 0 }
+    uSize: { value: mobile ? 2.9 : 2.5 }, uDpr: { value: dpr }, uKeep: { value: 1.001 }, uLinger: { value: 1 }, uFade: { value: 0 }, uClean: { value: 0 }, uTilt: { value: 0 }
   };
   // shared dissolve + inner glow + light band, injected into the physical material
   function jewelize(mat, kind) {
     mat.defines = Object.assign(mat.defines || {}, kind === 'gem' ? { IS_GEM: '' } : { IS_RING: '' });
     mat.onBeforeCompile = sh => {
-      Object.assign(sh.uniforms, { uTime: U.uTime, uSolid: U.uSolid, uBlow: U.uBlow, uSweep: U.uSweep });
+      Object.assign(sh.uniforms, { uTime: U.uTime, uSolid: U.uSolid, uBlow: U.uBlow, uSweep: U.uSweep, uTilt: U.uTilt });
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vLoc;')
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvLoc = (modelMatrix * vec4(position,1.0)).xyz;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-        varying vec3 vLoc; uniform float uTime,uSolid,uBlow,uSweep,uScaleInv;
+        varying vec3 vLoc; uniform float uTime,uSolid,uBlow,uSweep,uScaleInv,uTilt;
         float hsh(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}`)
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         vec3 lp = vLoc * uScaleInv;                       // back to unit space
@@ -120,21 +126,35 @@ function start() {
           #endif
           float fres = pow(1.0 - ndv, 3.0);
           float face = smoothstep(0.55, 0.92, ndv);
-          // v12b sleek sheen: once the mark is solid, a slim diagonal light passes across it every 6s (1.5s pass)
+          // v12f: a narrow specular glint, like sunlight catching a blade: a razor core with a faint halo, first pass at 7.2s, then softer every 8s
           float sd = dot(lp.xy, vec2(0.80, -0.60));
-          float st = uTime - 6.6;   // v12e: soon after the quicker formation (v12d 9.6)
-          float sp = st > 0.0 ? -0.75 + mod(st, 8.0) * 0.62 : -9.0;   // v12d: every 8s, a slower 2.4s pass
-          float sheen = (0.75 * exp(-pow((sd - sp) * 12.0, 2.0)) + 0.12 * exp(-pow((sd - sp) * 3.5, 2.0))) * smoothstep(0.85, 1.0, uSolid);
+          float st = uTime - 7.2;
+          float sp = st > 0.0 ? -0.62 + mod(st, 8.0) * 0.95 : -9.0;
+          float amp = (st < 8.0 ? 1.0 : 0.6) * smoothstep(0.85, 1.0, uSolid);
+          float gx = sd - sp;
+          float gcore = exp(-pow(gx * 70.0, 2.0));
+          float sheen = (1.0 * gcore + 0.30 * exp(-pow(gx * 16.0, 2.0))) * amp;
+          float shadeG = 1.0 - 0.22 * exp(-pow(gx * 9.0, 2.0)) * amp;   // the face dips a touch either side of the glint, so the light line reads razor-sharp even on the bright bands
+          vec3 wN2 = inverseTransformDirection(normal, viewMatrix);
           #ifdef IS_GEM
-            // v12b: a bright Frost / platinum face, lit from the top left, with a cooler silver toward the bottom right
-            float g = clamp(0.52 + lp.y * 0.85 - lp.x * 0.55, 0.0, 1.0);
-            // v12d: a fine brushed grain along the stroke direction, kept to a few percent
-            float br = hsh(vec2(floor(dot(lp.xy, vec2(0.6, 0.8)) * 1400.0), 3.1)) * 0.6 + hsh(vec2(floor(dot(lp.xy, vec2(0.6, 0.8)) * 380.0), 7.7)) * 0.4;
-            vec3 frost = mix(vec3(0.60, 0.66, 0.78), vec3(0.98, 1.02, 1.08), g) * (0.965 + br * 0.05);   // v12d: brushed platinum, lit from the top left
-            totalEmissiveRadiance += frost * face
-                                   + vec3(0.20, 0.24, 0.33) * (1.0 - face) + chm * 1.35      // polished chamfers, a step darker for a crisp edge
-                                   + vec3(1.0, 1.02, 1.05) * sheen * (1.7 * face + 1.0 * (1.0 - face))
-                                   + vec3(0.86, 0.92, 1.00) * band * (0.05 + fres * 0.5)
+            // v12f: mirror-polished steel, gradients only (no noise). A reflected 'sky' above a razor horizon, cool steel-blue below.
+            vec2 q = lp.xy;
+            float hy = q.y + q.x * 0.30 - 0.045 + uTilt;              // the horizon shifts as the badge turns
+            float aw = max(fwidth(hy) * 0.75, 1e-5);                  // one-pixel antialiased edge: sharp at any DPR
+            float up = smoothstep(-aw, aw, hy);
+            vec3 sky = mix(vec3(1.05, 1.10, 1.18), vec3(2.05, 2.10, 2.18), smoothstep(0.0, 0.16, hy));
+            sky = mix(sky, vec3(1.30, 1.38, 1.50), smoothstep(0.17, 0.36, hy));                 // the top rolls off a touch, so the brightest band sits high
+            sky += vec3(1.4, 1.42, 1.46) * exp(-pow((hy - 0.012) / 0.010, 2.0));               // a hot line just above the horizon
+            vec3 grd = mix(vec3(0.13, 0.18, 0.29), vec3(0.50, 0.62, 0.82), smoothstep(-0.015, -0.36, hy));   // dark steel under the horizon, lifting to steel-blue
+            grd += vec3(0.22, 0.30, 0.44) * exp(-pow((hy + 0.20) / 0.05, 2.0));                // a soft secondary band (floor bounce)
+            vec3 steel = mix(grd, sky, up);
+            // crisp bevel: near-white where it faces the key light (top left), cool steel where it turns away
+            float kb = dot(normalize(wN2.xy + vec2(1e-4)), normalize(vec2(-0.55, 0.83)));
+            vec3 bevC = mix(vec3(0.30, 0.40, 0.58), vec3(2.6, 2.65, 2.75), smoothstep(-0.35, 0.65, kb));
+            totalEmissiveRadiance += steel * shadeG * face
+                                   + bevC * (1.0 - face) + chm * 0.8
+                                   + vec3(1.0, 1.02, 1.05) * sheen * (4.2 * face + 7.0 * (1.0 - face))   // flares where it crosses an edge
+                                   + vec3(0.86, 0.92, 1.00) * band * (0.04 + fres * 0.4)
                                    + vec3(0.70, 0.82, 0.98) * edgeGlow * 1.1;
           #else
             // v12b: the ring is a crisp Frost hairline
@@ -143,7 +163,7 @@ function start() {
             float arc = 0.62 + 0.38 * pow(0.5 + 0.5 * cos(ang - 2.2), 2.0);
             float tr = 2.2 - uTime * 0.26;   // v12d: slower, one lap in ~24s
             float trav = 0.6 * exp(-pow(atan(sin(ang - tr), cos(ang - tr)) * 2.6, 2.0)) * smoothstep(0.85, 1.0, uSolid);
-            totalEmissiveRadiance += vec3(0.88, 0.94, 1.03) * (0.95 * arc + 0.8 * trav) + chm
+            totalEmissiveRadiance += vec3(0.88, 0.94, 1.03) * (0.95 * arc + 0.8 * trav) + chm + vec3(1.0) * gcore * amp * 3.0
                                    + vec3(0.86, 0.92, 1.00) * band * 0.3 + vec3(0.70, 0.82, 0.98) * edgeGlow * 1.1;
           #endif
         }`);
@@ -153,8 +173,8 @@ function start() {
   const scaleInv = { value: 1 };
   // satin black chrome: a metal body that only shows the studio as long, soft reflections
   const gemMat = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color('#9aa8bd'), metalness: 1.0, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.08,
-    envMapIntensity: 0.55, flatShading: true
+    color: new THREE.Color('#9aa8bd'), metalness: 1.0, roughness: 0.18, clearcoat: 1, clearcoatRoughness: 0.04,
+    envMapIntensity: 0.22, flatShading: true   // v12f: the emissive steel gradient carries the look; env adds only a faint live reflection
   });
   jewelize(gemMat, 'gem');
   const gem = new THREE.Mesh(ngeo, gemMat);
@@ -175,7 +195,7 @@ function start() {
         float rim = smoothstep(0.93, 1.0, r) * 0.35;   // v12c: a tighter inner lift
         c *= 1.0 - smoothstep(0.62, 0.99, length(vP + vec2(0.0, -0.035)) / ${RING.toFixed(3)}) * 0.42;   // v12d: an inner shadow, light from above
         c += vec3(0.33,0.50,0.70) * rim * 0.32 * (0.55 + 0.45 * smoothstep(-0.2, 0.6, vP.y / ${RING.toFixed(3)}));
-        float a = 0.9 * smoothstep(0.0, 1.0, uSolid) * (1.0 - smoothstep(-0.1, 0.25, uBlow*1.7 - (vP.x+0.5)*0.55));
+        float a = smoothstep(0.0, 1.0, uSolid) * (1.0 - smoothstep(-0.1, 0.25, uBlow*1.7 - (vP.x+0.5)*0.55));
         gl_FragColor = vec4(c * a, a);
       }`,
     premultipliedAlpha: true
@@ -217,7 +237,7 @@ function start() {
     fragmentShader: `varying vec2 vU; varying vec2 vP; uniform sampler2D uG; uniform float uSolid,uBlow;
       void main(){
         vec4 t = texture2D(uG, vU);
-        vec3 c = vec3(0.42, 0.62, 1.00) * t.r * 0.16;
+        vec3 c = vec3(0.42, 0.62, 1.00) * t.r * 0.06;   // v12f: a whisper, so the edges read sharp
         c *= smoothstep(0.3, 1.0, uSolid) * (1.0 - smoothstep(-0.1, 0.25, uBlow*1.7 - (vP.x+0.5)*0.55));
         gl_FragColor = vec4(c, clamp(max(c.r, max(c.g, c.b)), 0.0, 1.0));
       }`,
@@ -255,7 +275,10 @@ function start() {
   for (let i = 0; i < COUNT; i++) {
     const r = Math.random();
     let tx, ty, tz, cls;
-    if (r < .5) {             // polished face
+    if (i < COUNT * 0.07) {   // v12f: dust that settles off the badge, carrying the residual shimmer around it (never on the face)
+      cls = 3; const th = Math.random() * Math.PI * 2, rr = RING * (1.14 + Math.pow(Math.random(), 0.7) * 1.1);
+      tx = Math.cos(th) * rr; ty = Math.sin(th) * rr * 0.86; tz = (Math.random() - .5) * 0.3;
+    } else if (r < .5) {             // polished face
       cls = 0; do { tx = (Math.random() * .45 - .225) * MK; ty = (Math.random() * .6 - .3) * MK; } while (!inPoly(tx, ty));
       tz = FRONT;
     } else if (r > .87) {     // the ring
@@ -273,12 +296,12 @@ function start() {
     const a = Math.random() * Math.PI * 2, rad = 0.6 + Math.pow(Math.random(), 0.6) * 2.2;
     aC[i * 3] = tx - 1.4 + Math.cos(a) * rad; aC[i * 3 + 1] = ty + Math.sin(a) * rad * 0.55; aC[i * 3 + 2] = (Math.random() - 0.5) * 2.4;
     const delay = (tx + 0.5) * 0.42 + Math.random() * 0.22;
-    const bright = cls === 0 ? 0.5 + Math.random() * 0.4 : cls === 2 ? 0.7 + Math.random() * 0.45 : 0.8 + Math.random() * 0.5;
+    const bright = cls === 3 ? 0.45 + Math.random() * 0.4 : cls === 0 ? 0.5 + Math.random() * 0.4 : cls === 2 ? 0.7 + Math.random() * 0.45 : 0.8 + Math.random() * 0.5;
     aS[i * 4] = delay; aS[i * 4 + 1] = 0.6 + Math.random() * 0.9; aS[i * 4 + 2] = bright; aS[i * 4 + 3] = Math.random();
     // silver-blue grains with a share of ice-sapphire: a few on the face and edges, rare pale sparks
     const pe = cls === 0 ? .16 : .12;
     aK[i] = Math.random() < pe ? (Math.random() < .06 ? 1.0 : .7) : 0;
-    aF[i] = cls === 0 ? 1 : 0;               // v12d: face grains rest quieter so the platinum face stays clean
+    aF[i] = cls === 0 ? 1 : cls === 3 ? 2 : 0;   // 1 face, 2 off-badge dust               // v12d: face grains rest quieter so the platinum face stays clean
     aR[i] = i / COUNT;                       // rank: adaptive quality fades out the top ranks, never cuts them
   }
   const geo = new THREE.BufferGeometry();
@@ -325,7 +348,7 @@ function start() {
     uniforms: U, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
     vertexShader: NOISE + `
       attribute vec3 aChaos; attribute vec4 aSeed; attribute float aEm; attribute float aRank; attribute float aFace;
-      uniform float uTime,uForm,uBlow,uSolid,uSweep,uSize,uDpr,uKeep,uLinger,uFade; uniform vec2 uLight;
+      uniform float uTime,uForm,uBlow,uSolid,uSweep,uSize,uDpr,uKeep,uLinger,uFade,uClean; uniform vec2 uLight;
       varying vec3 vCol; varying float vA; varying float vSpec;
       void main(){
         float f=clamp((uForm*1.75-aSeed.x)/1.0,0.0,1.0);
@@ -350,12 +373,14 @@ function start() {
         float l=exp(-dot(position.xy-uLight,position.xy-uLight)*7.0);
         float settle=uFade*fe*(1.0-b);                  // v12e: grains step back on their own, slower clock (2x the v12d fade)
         float tw=0.55+0.45*sin(uTime*(0.9+aSeed.y*1.4)+aSeed.w*60.0);   // v12d: a slow shimmer
-        float rest=(0.16+0.30*uLinger)*tw*mix(1.0,0.5,aFace);   // a fine layer lingers (lighter on the face), then stays as a residual texture
+        float dust=step(1.5,aFace), fc=step(0.5,aFace)*(1.0-dust);
+        float rest=(0.16+0.30*uLinger)*tw*mix(1.0,0.5,fc)*mix(1.0,1.5,dust);   // a fine layer lingers (lighter on the face), then stays as a residual texture
         float k=((br*0.48 + l*0.28*br + (1.0-fe)*0.12)*mix(1.0,rest,settle) + band*(0.55+glint*5.0)*mix(1.0,0.08,settle))*1.2;   // v12: grains ~20% brighter
         vec3 plat=mix(vec3(0.84,0.89,0.97),vec3(0.93,0.95,1.00),aSeed.w);
         vec3 jade=mix(vec3(0.52,0.68,0.92),vec3(0.78,0.88,1.00),step(0.95,aEm));
         vCol=mix(plat,jade,step(0.5,aEm))*k;
         vA=(1.0-smoothstep(0.35,1.0,b))*smoothstep(0.0,0.08,uForm+0.02)/(dof*dof)*(1.0-smoothstep(uKeep-0.06,uKeep,aRank));
+        vA*=1.0-uClean*(1.0-dust)*(1.0-smoothstep(0.0,0.12,b));   // v12f: every grain on the badge crossfades out completely; it returns only as the mark peels away
         vSpec=band*(0.4+glint*2.0)*mix(1.0,0.25,settle);
       }`,
     fragmentShader: `
@@ -390,6 +415,7 @@ function start() {
   }
   const last = {};
   const setTf = (el, v) => { if (el.__tf !== v) { el.__tf = v; el.style.transform = v; } };
+  function setRootVar(k, v) { if (last[k] !== v) { last[k] = v; root.style.setProperty(k, v); } }
   function setVar(k, v) { if (last[k] !== v) { last[k] = v; sticky.style.setProperty(k, v); } }
   resize(); addEventListener('resize', resize, { passive: true });
 
@@ -458,7 +484,9 @@ function start() {
     const form = Math.min(1, Math.max(0, (t - 0.35) / 5.0));   // v12e: quicker gathering (v12d 7.4s, v12c 4.4s)
     U.uTime.value = t; U.uForm.value = form;
     U.uSolid.value = sm(3.4, 5.9, t);   // v12e: mark formed by ~5.9s (v12d 8.6s)
-    U.uFade.value = sm(3.6, 10.8, t);   // v12e: loose grains fade over ~7.2s (v12d ~3.6s)
+    U.uFade.value = sm(3.6, 10.8, t);
+    U.uClean.value = sm(4.6, 7.0, t);   // v12f: the badge is grain-free from 7.0s
+    U.uTilt.value = jewel.rotation.y * 0.22 - jewel.rotation.x * 0.18;   // the horizon reflection drifts as it turns   // v12e: loose grains fade over ~7.2s (v12d ~3.6s)
     U.uLinger.value = 1 - sm(6.0, 25.0, t);          // v12e: the shimmer eases down to a residual over ~19s (v12d ~9.4s)
     bSm += (sm(0.0, 1.0, p) - bSm) * (1 - Math.exp(-dt * 1.8));   // v12e: scroll dispersal trails the scroll, ~2x slower drift and fade
     U.uBlow.value = bSm > 0.9995 ? 1 : bSm;
@@ -474,6 +502,17 @@ function start() {
     setVar('--hs', (sm(0.42, 0.98, p) * 1.3).toFixed(3));
     setVar('--lp', sm(0.58, 0.86, p).toFixed(3));
     NX.heroP = p;
+    // v12f: keep the page grain off the badge: project its centre and ring, then cut a hole in the fixed grain overlay
+    if (U.uBlow.value < 0.98 && U.uSolid.value > 0.001) {
+      jewel.updateMatrixWorld(); camera.updateMatrixWorld();
+      const c0 = new THREE.Vector3(0, 0, 0).applyMatrix4(jewel.matrixWorld).project(camera);
+      const c1 = new THREE.Vector3(RING, 0, 0).applyMatrix4(jewel.matrixWorld).project(camera);
+      const c2 = new THREE.Vector3(0, RING, 0).applyMatrix4(jewel.matrixWorld).project(camera);
+      const top = sticky.getBoundingClientRect().top;
+      const cx = (c0.x + 1) * W / 2, cy = top + (1 - c0.y) * H / 2;
+      const rad = Math.max(Math.hypot((c1.x - c0.x) * W / 2, (c1.y - c0.y) * H / 2), Math.hypot((c2.x - c0.x) * W / 2, (c2.y - c0.y) * H / 2)) * 1.03 + 3;
+      setRootVar('--gmask', `radial-gradient(circle at ${cx.toFixed(1)}px ${cy.toFixed(1)}px, transparent ${rad.toFixed(1)}px, #000 ${(rad + 2).toFixed(1)}px)`);
+    } else setRootVar('--gmask', 'none');
     renderer.render(scene, camera);
   });
 }
