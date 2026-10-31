@@ -45,7 +45,7 @@
 
   /* ---------- Lenis ---------- */
   if (!reduce && window.Lenis) {
-    NX.lenis = new Lenis({ lerp: .08, smoothWheel: true, wheelMultiplier: .95, touchMultiplier: 1 });
+    NX.lenis = new Lenis({ lerp: .1, smoothWheel: true, wheelMultiplier: .95, touchMultiplier: 1 });
   }
   document.addEventListener('click', e => {
     const a = e.target.closest('a[href^="#"]');
@@ -104,15 +104,27 @@
   }
 
   /* ---------- magnetic buttons ---------- */
-  const mags = fine && !reduce ? [...document.querySelectorAll('.magnetic')].map(el => ({ el, x: 0, y: 0, tx: 0, ty: 0 })) : [];
-  if (mags.length) addEventListener('pointermove', e => {
-    for (const m of mags) {
-      const r = m.el.getBoundingClientRect();
-      const cx = r.left + r.width / 2, cy = r.top + r.height / 2, dx = e.clientX - cx, dy = e.clientY - cy;
-      const near = Math.abs(dx) < r.width / 2 + 36 && Math.abs(dy) < r.height / 2 + 30;
-      m.tx = near ? clamp(dx * .2, -7, 7) : 0; m.ty = near ? clamp(dy * .3, -5, 5) : 0;
-    }
-  }, { passive: true });
+  // v7: boxes are read once per frame in the read phase (never inside pointermove), the pull is softer
+  // and wider, and a fluid ice-blue bubble follows the cursor inside .btn-metal (--bx / --by / --bo)
+  const mags = fine && !reduce ? [...document.querySelectorAll('.magnetic')].map(el => ({ el, x: 0, y: 0, tx: 0, ty: 0, bx: 50, by: 50, tbx: 50, tby: 50, bo: 0, tbo: 0, metal: el.classList.contains('btn-metal') })) : [];
+  const ptr = { x: -1e4, y: -1e4, moved: false };
+  if (mags.length) {
+    addEventListener('pointermove', e => { ptr.x = e.clientX; ptr.y = e.clientY; ptr.moved = true; }, { passive: true });
+    NX.read(() => {
+      if (!ptr.moved) return; ptr.moved = false;
+      const vh = innerHeight;
+      for (const m of mags) {
+        const r = m.el.getBoundingClientRect();
+        if (r.bottom < -60 || r.top > vh + 60) { m.tx = m.ty = 0; m.tbo = 0; continue; }
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2, dx = ptr.x - cx, dy = ptr.y - cy;
+        const near = Math.abs(dx) < r.width / 2 + 44 && Math.abs(dy) < r.height / 2 + 36;
+        m.tx = near ? clamp(dx * .18, -8, 8) : 0; m.ty = near ? clamp(dy * .26, -6, 6) : 0;
+        const inside = Math.abs(dx) <= r.width / 2 && Math.abs(dy) <= r.height / 2;
+        m.tbo = inside ? 1 : 0;
+        if (near) { m.tbx = clamp((ptr.x - r.left) / r.width * 100, -10, 110); m.tby = clamp((ptr.y - r.top) / r.height * 100, -20, 120); }
+      }
+    });
+  }
 
   /* ---------- parallax ---------- */
   const deps = reduce ? [] : [...document.querySelectorAll('[data-depth]')].map(el => ({ el, d: +el.dataset.depth }));
@@ -138,10 +150,17 @@
     sweep(t);                                       // 2. write (from cached boxes only)
     const vh = innerHeight, y = scrollY;
     for (const m of mags) {
-      const k = 1 - Math.exp(-dt * 10);
+      const k = 1 - Math.exp(-dt * 8), kb = 1 - Math.exp(-dt * 6), ko = 1 - Math.exp(-dt * (m.tbo ? 7 : 4));
       m.x += (m.tx - m.x) * k; m.y += (m.ty - m.y) * k;
-      if (Math.abs(m.x) + Math.abs(m.y) + Math.abs(m.tx) + Math.abs(m.ty) > .02) {
+      if (Math.abs(m.x - m.tx) + Math.abs(m.y - m.ty) > .01 || m.mv) {
+        m.mv = Math.abs(m.x - m.tx) + Math.abs(m.y - m.ty) > .01;
         m.el.style.setProperty('--mx-t', m.x.toFixed(2) + 'px'); m.el.style.setProperty('--my-t', m.y.toFixed(2) + 'px');
+      }
+      if (m.metal && (m.bo > .002 || m.tbo)) {
+        m.bx += (m.tbx - m.bx) * kb; m.by += (m.tby - m.by) * kb; m.bo += (m.tbo - m.bo) * ko;
+        if (m.bo < .002 && !m.tbo) m.bo = 0;
+        const st = m.el.style;
+        st.setProperty('--bx', m.bx.toFixed(1) + '%'); st.setProperty('--by', m.by.toFixed(1) + '%'); st.setProperty('--bo', m.bo.toFixed(3));
       }
     }
     for (const p of deps) {
@@ -229,16 +248,18 @@
       if (cx > b) { const d = cx - b; return b + d * .4 / (1 + d / 90); }
       return cx;
     };
+    const put = (node, k, v) => { const c = node.__v || (node.__v = {}); if (c[k] !== v) { c[k] = v; node.style.setProperty(k, v); } };
     function paint() {
       const sp = reduce ? 0 : Math.min(1, Math.abs(vx) / 1700);
       const sx = 1 + sp * .32 + pressAmt * .07, sy = 1 - sp * .2 + pressAmt * .07;
       if (Math.abs(w - lastW) > .25) { lastW = w; lens.style.width = w.toFixed(1) + 'px'; sizeFilter && sizeFilter(w, H); }
       const s = `translate3d(${(x - w / 2).toFixed(2)}px,0,0) scale(${sx.toFixed(4)},${sy.toFixed(4)})`;
       if (s !== lastSet) { lens.style.transform = s; lastSet = s; }
-      lens.style.setProperty('--press', pressAmt.toFixed(3));
-      lens.style.setProperty('--ang', clamp(vx / 30, -50, 50).toFixed(1) + 'deg');
-      lens.style.setProperty('--lo', lo.toFixed(3));
-      opts.forEach((o, k) => o.style.setProperty('--on', (lo * Math.max(0, 1 - Math.abs(x - geo[k].c) / (geo[k].w * .9))).toFixed(3)));
+      // v7: only touch a custom property when its value really changes (fewer style recalcs while dragging)
+      put(lens, '--press', pressAmt.toFixed(3));
+      put(lens, '--ang', clamp(vx / 30, -50, 50).toFixed(1) + 'deg');
+      put(lens, '--lo', lo.toFixed(3));
+      opts.forEach((o, k) => put(o, '--on', (lo * Math.max(0, 1 - Math.abs(x - geo[k].c) / (geo[k].w * .9))).toFixed(2)));
       onMove && onMove(idxF(x), lo);
       if (scroller && (drag || running)) {   // keep the lens in view inside a scrolling track
         const L = elL + x - scroller.scrollLeft, SW = scroller.clientWidth, m = Math.min(90, SW * .2);
@@ -248,11 +269,11 @@
     function tick(now, dt) {
       if (!running) return;
       if (drag) {
-        const x0 = x; x += (rubber(px - grab) - x) * (1 - Math.exp(-dt * 36));
-        vx = vx * .7 + ((x - x0) / Math.max(dt, 1e-3)) * .3;
-        w += (widthAt(x) - w) * (1 - Math.exp(-dt * 30));
+        const x0 = x; x += (rubber(px - grab) - x) * (1 - Math.exp(-dt * 30));   // v7: a touch more fluid follow
+        vx = vx * .78 + ((x - x0) / Math.max(dt, 1e-3)) * .22;
+        w += (widthAt(x) - w) * (1 - Math.exp(-dt * 24));
       } else {
-        const k = 240, c = 2 * .64 * Math.sqrt(k), kw = 320, cw = 2 * .8 * Math.sqrt(kw), h = dt / 4;   // soft, slightly elastic settle
+        const k = 220, c = 2 * .7 * Math.sqrt(k), kw = 300, cw = 2 * .82 * Math.sqrt(kw), h = dt / 4;   // soft, slightly elastic settle (v7: a little smoother)
         for (let s = 0; s < 4; s++) { vx += (k * (tx - x) - c * vx) * h; x += vx * h; vw += (kw * (tw - w) - cw * vw) * h; w += vw * h; }
       }
       pressAmt += ((press ? 1 : 0) - pressAmt) * (1 - Math.exp(-dt * 14));
@@ -382,6 +403,8 @@
       if (Math.abs(p - lastP) < .0005) return; lastP = p;
       panels.forEach((el, k) => {
         const d = p - k, a = Math.abs(d), o = reduce ? (a < .5 ? 1 : 0) : Math.pow(clamp(1 - a * 1.7, 0, 1), 1.4);
+        if (o < .002 && el.__off) return;                    // v7: panels that stay hidden are not touched
+        el.__off = o < .002;
         el.style.setProperty('--o', o.toFixed(3));
         el.style.setProperty('--x', (-d * 90).toFixed(1) + 'px');
         el.classList.toggle('off', o < .002);
@@ -462,7 +485,7 @@
   /* contact: pick what you need, the email button follows */
   const cBtn = document.getElementById('contact-btn');
   const cEl = document.querySelector('[data-lg="contact"]');
-  const article = s => ({ 'AI assistant': 'an AI assistant', 'Bot': 'a bot', 'Automation': 'an automation', 'Scraping': 'a scraping project', 'Website': 'a website or web app', 'Web app': 'a web app' }[s] || 'your project');
+  const article = s => ({ 'AI assistant': 'an AI assistant', 'Video editing': 'a video edit', 'Social media': 'social media', 'Website': 'a website or web app', 'SEO': 'an SEO project', 'Shopify store': 'a Shopify store', 'Brand kit': 'a brand kit', 'Email marketing': 'email marketing', 'Automation': 'an automation', 'Bot': 'a bot', 'Scraping': 'a scraping project', 'Web app': 'a web app' }[s] || 'your project');
   cEl && cBtn && liquid(cEl, {
     initial: 0,
     onCommit: (i, o) => {
@@ -497,14 +520,14 @@ const GRAIN_TUNER = true;
   const grain = document.querySelector('.grain'); if (!grain) return;
   const LOOKS = [   // img: CSS var holding the noise tile; op: base opacity; size: tile size
     { id: 'previous', name: 'Previous', img: 'var(--noise)',  op: .022, size: '180px' },   // v4/v5 exactly
-    { id: 'new',      name: 'New',      img: 'var(--noise6)', op: .05,  size: '180px' },   // v6 default
-    { id: 'soft',     name: 'Soft',     img: 'var(--noise6)', op: .032, size: '180px' },
-    { id: 'strong',   name: 'Strong',   img: 'var(--noise6)', op: .075, size: '200px' }
+    { id: 'new',      name: 'New',      img: 'var(--noise7)', op: .085, size: '200px' },   // v7 default: silver-blue, clearly visible
+    { id: 'soft',     name: 'Soft',     img: 'var(--noise7)', op: .06,  size: '200px' },
+    { id: 'strong',   name: 'Strong',   img: 'var(--noise7)', op: .12,  size: '220px' }
   ];
-  const HERO = 1.4, REST = .65;    // per-section multipliers on the look's opacity
+  const HERO = 1.3, REST = .75;    // per-section multipliers on the look's opacity
   const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
-  let li = Math.max(0, LOOKS.findIndex(l => l.id === store.get('nb-grain-look'))); if (!store.get('nb-grain-look')) li = 1;
-  let per = store.get('nb-grain-sec') === '1';
+  let li = Math.max(0, LOOKS.findIndex(l => l.id === store.get('nb7-grain-look'))); if (!store.get('nb7-grain-look')) li = 1;
+  let per = store.get('nb7-grain-sec') === '1';
 
   const ui = document.createElement('div');
   ui.className = 'gt'; ui.setAttribute('role', 'group'); ui.setAttribute('aria-label', 'Grain preview');
@@ -537,8 +560,8 @@ const GRAIN_TUNER = true;
   addEventListener('scroll', onScroll, { passive: true });
   addEventListener('resize', onScroll, { passive: true });
   let hooked = false; const hook = () => { if (!hooked && window.NX && NX.lenis && NX.lenis.on) { hooked = true; NX.lenis.on('scroll', onScroll); } };
-  bLook.addEventListener('click', () => { li = (li + 1) % LOOKS.length; store.set('nb-grain-look', LOOKS[li].id); apply(); });
-  bSec.addEventListener('click', () => { per = !per; store.set('nb-grain-sec', per ? '1' : '0'); apply(); });
+  bLook.addEventListener('click', () => { li = (li + 1) % LOOKS.length; store.set('nb7-grain-look', LOOKS[li].id); apply(); });
+  bSec.addEventListener('click', () => { per = !per; store.set('nb7-grain-sec', per ? '1' : '0'); apply(); });
   // keep taps on the pill from reaching any page drag handlers
   ui.addEventListener('pointerdown', e => e.stopPropagation());
   apply();

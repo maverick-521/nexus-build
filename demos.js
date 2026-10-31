@@ -56,7 +56,11 @@
   const flow = document.getElementById('flow');
   if (flow) {
     const NS = 'http://www.w3.org/2000/svg';
-    const wires = ['w1', 'w2', 'w3', 'w4'].map(id => { const p = document.getElementById(id); return { p, L: p.getTotalLength() }; });
+    // v7: each wire is sampled once into a lookup table, so packets never call getPointAtLength per frame
+    const wires = ['w1', 'w2', 'w3', 'w4'].map(id => { const p = document.getElementById(id), L = p.getTotalLength(), S = 160, lut = new Float32Array((S + 1) * 2);
+      for (let i = 0; i <= S; i++) { const q = p.getPointAtLength(i / S * L); lut[i * 2] = q.x; lut[i * 2 + 1] = q.y; }
+      return { p, L, S, lut }; });
+    const ptAt = (w, e) => { const f = clamp(e, 0, 1) * w.S, i = Math.min(w.S - 1, f | 0), u = f - i, a = i * 2; return [w.lut[a] + (w.lut[a + 2] - w.lut[a]) * u, w.lut[a + 1] + (w.lut[a + 3] - w.lut[a + 1]) * u]; };
     const nodes = ['n0', 'n1', 'n2', 'n3', 'n4'].map(id => document.getElementById(id));
     const pk = document.getElementById('packets'), runsEl = document.getElementById('runs');
     let runs = 126; runsEl.textContent = runs;
@@ -74,11 +78,11 @@
         const P = packets[i], u = t - P.t;
         if (P.stage === 0) {
           const k = clamp(u / .95, 0, 1.2);
-          P.dots[0].forEach((c, j) => { const e = easeIO(clamp(k - j * .035, 0, 1)), pt = wires[0].p.getPointAtLength(e * wires[0].L); c.setAttribute('cx', pt.x); c.setAttribute('cy', pt.y); });
+          P.dots[0].forEach((c, j) => { const pt = ptAt(wires[0], easeIO(clamp(k - j * .035, 0, 1))); c.setAttribute('cx', pt[0].toFixed(1)); c.setAttribute('cy', pt[1].toFixed(1)); });
           if (u >= 1.2) { P.stage = 1; hit(nodes[1]); P.dots[0].forEach(c => c.remove()); P.dots = [mk(), mk(), mk()]; }
         } else {
           const k = clamp((u - 1.55) / .95, 0, 1.2);
-          P.dots.forEach((d, b) => d.forEach((c, j) => { const e = easeIO(clamp(k - j * .035, 0, 1)), w = wires[b + 1], pt = w.p.getPointAtLength(e * w.L); c.setAttribute('cx', pt.x); c.setAttribute('cy', pt.y); }));
+          P.dots.forEach((d, b) => d.forEach((c, j) => { const pt = ptAt(wires[b + 1], easeIO(clamp(k - j * .035, 0, 1))); c.setAttribute('cx', pt[0].toFixed(1)); c.setAttribute('cy', pt[1].toFixed(1)); }));
           if (u >= 1.55 + 1.2) { [2, 3, 4].forEach(n => hit(nodes[n])); P.dots.forEach(d => d.forEach(c => c.remove())); packets.splice(i, 1); runsEl.textContent = ++runs; }
         }
       }
@@ -98,6 +102,9 @@
     const chart = document.getElementById('chart'), card = chart.closest('.s-dash');
     let p = 1, draw = reduce ? 1 : 0, drawT = 0, shown = false;
     const lerp = (a, b, f) => a + (b - a) * f;
+    // the chart's box inside the card is measured on show / resize only, never per frame
+    let box = null;
+    const measure = () => { const cr = chart.getBoundingClientRect(), dr = card.getBoundingClientRect(); box = { x: cr.left - dr.left, y: cr.top - dr.top, w: cr.width, h: cr.height }; };
     const at = (arr, q) => { const i = clamp(Math.floor(q), 0, arr.length - 2), f = q - i; return arr[i].map((v, j) => typeof v === 'number' ? lerp(v, arr[i + 1][j], f) : v); };
     function render() {
       const q = clamp(p, 0, 2), i = Math.min(1, Math.floor(q)), f = q - i;
@@ -115,16 +122,17 @@
       k1.textContent = Math.round(kp[0] * draw).toLocaleString('en-US');
       k2.textContent = '$' + (kp[1] * draw).toFixed(1) + 'k';
       k3.textContent = (kp[2] * draw).toFixed(1) + '%';
-      const cr = chart.getBoundingClientRect(), dr = card.getBoundingClientRect(), last = pts[N - 1];
-      dot.style.setProperty('--dx', (cr.left - dr.left + last[0] / 600 * cr.width).toFixed(1) + 'px');
-      dot.style.setProperty('--dy', (cr.top - dr.top + last[1] / 190 * cr.height).toFixed(1) + 'px');
+      if (!box) measure();
+      const last = pts[N - 1];
+      dot.style.setProperty('--dx', (box.x + last[0] / 600 * box.w).toFixed(1) + 'px');
+      dot.style.setProperty('--dy', (box.y + last[1] / 190 * box.h).toFixed(1) + 'px');
       dot.style.opacity = draw > .98 ? 1 : 0;
     }
     const rangeEl = document.querySelector('[data-lg="range"]');
     rangeEl && NX.liquid(rangeEl, { initial: 1, onMove: q => { if (Math.abs(q - p) > .0005) { p = q; render(); } } });
-    seen(chart, v => { if (v && !shown) { shown = true; drawT = performance.now(); } });
-    if (!reduce) NX.on(now => { if (shown && draw < 1) { draw = expoOut(clamp((now - drawT - 500) / 1600, 0, 1)); render(); } });
+    seen(chart, v => { if (v) measure(); if (v && !shown) { shown = true; drawT = performance.now(); } });
+    if (!reduce) NX.on(now => { if (shown && draw < 1) { draw = expoOut(clamp((now - drawT - 250) / 1100, 0, 1)); render(); } });
     render();
-    addEventListener('resize', render);
+    addEventListener('resize', () => { measure(); render(); });
   }
 })();

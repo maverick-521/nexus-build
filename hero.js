@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-/* Nexus Build v6 hero: grains converge into a solid black-chrome "N" (thin stems, heavy diagonal) with platinum chamfers.
+/* Nexus Build v7 hero (midnight sapphire re-tint of the v6 N): grains converge into a solid black-chrome "N" (thin stems, heavy diagonal) with platinum chamfers.
    One clock (NX), one light band, one curve. The mesh and the grains share the same group and the
    same unit space, so the grains land exactly on the jewel's silhouette and then dissolve into it. */
 const root = document.documentElement;
@@ -37,23 +37,23 @@ function start() {
 
   // ---------- studio environment (soft boxes, no external files) ----------
   const env = new THREE.Scene();
-  env.add(new THREE.Mesh(new THREE.SphereGeometry(30, 24, 12), new THREE.MeshBasicMaterial({ color: 0x060708, side: THREE.BackSide })));
+  env.add(new THREE.Mesh(new THREE.SphereGeometry(30, 24, 12), new THREE.MeshBasicMaterial({ color: 0x03060e, side: THREE.BackSide })));
   const box = (w, h, col, k, pos, look) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(k), side: THREE.DoubleSide }));
     m.position.set(...pos); m.lookAt(...(look || [0, 0, 0])); env.add(m); return m;
   };
   box(16, 3.2, '#f6f7f8', 3.2, [0, 9, 2]);                 // overhead strip
-  box(2.2, 12, '#e8f4ff', 4.0, [-9, 1, 3]);                // cool key, left
-  box(1.4, 12, '#fff1e0', 2.2, [9, 0, 1]);                 // warm rim, right
-  box(22, 9, '#2c3331', 0.55, [0, -9, 0]);                 // neutral floor bounce, a breath of green
+  box(2.2, 12, '#dfeeff', 4.0, [-9, 1, 3]);                // cool key, left
+  box(1.4, 12, '#cfe0f5', 2.2, [9, 0, 1]);                 // ice rim, right
+  box(22, 9, '#16264a', 0.6, [0, -9, 0]);                  // midnight floor bounce
   box(9, 1.1, '#ffffff', 5.0, [-2.5, 4.2, 9]);             // front strip: gives the face a long polished reflection
-  box(14, 6, '#24282b', 0.5, [2, -3, 9]);                  // front graphite fill (kept low: the face stays deep)
-  box(7, 7, '#3a4744', 0.9, [1.5, -.5, -9]);              // behind: soft neutral back light
+  box(14, 6, '#141e33', 0.5, [2, -3, 9]);                  // front deep-navy fill (kept low: the face stays deep)
+  box(7, 7, '#1d3a66', 0.9, [1.5, -.5, -9]);              // behind: soft sapphire back light
   box(.7, 14, '#f4f5f6', 3.0, [-2.5, 0, -9]);             // a thin white strip behind, refracted into the body
   box(3, 3, '#ffffff', 5.0, [6, 6, 7]);                    // small hot softbox: glints on the chamfers
   box(12, 1.0, '#f7f7f8', 3.2, [0, 7.5, 7]);              // platinum line on the top chamfers
-  box(1.0, 12, '#eef6ff', 2.6, [-7.5, 0, 7]);             // and on the left chamfers
-  box(1.0, 12, '#fff6ea', 1.4, [7.5, 0, 7]);              // a warm, softer one on the right
+  box(1.0, 12, '#e6f1ff', 2.6, [-7.5, 0, 7]);             // and on the left chamfers
+  box(1.0, 12, '#dbe7f6', 1.4, [7.5, 0, 7]);              // a cooler, softer one on the right
   const pmrem = new THREE.PMREMGenerator(renderer);
   const envTex = pmrem.fromScene(env, 0.035).texture;
   scene.environment = envTex;
@@ -70,7 +70,7 @@ function start() {
   const U = {
     uTime: { value: 0 }, uForm: { value: 0 }, uBlow: { value: 0 }, uSolid: { value: 0 },
     uSweep: { value: -9 }, uLight: { value: new THREE.Vector2(-0.3, 0.35) },
-    uSize: { value: mobile ? 2.4 : 2.0 }, uDpr: { value: dpr }
+    uSize: { value: mobile ? 2.8 : 2.4 }, uDpr: { value: dpr }
   };
   // shared dissolve + inner glow + light band, injected into the physical material
   function jewelize(mat, kind) {
@@ -100,17 +100,17 @@ function start() {
             float bev = smoothstep(0.08, 0.22, 1.0 - ndv);                       // chamfers only
             float kl = pow(max(dot(wN, normalize(vec3(-0.45, 0.8, 0.45))), 0.0), 12.0)
                      + 0.4 * pow(max(dot(wN, normalize(vec3(0.7, 0.35, 0.6))), 0.0), 16.0);
-            chm = vec3(0.93, 0.94, 0.95) * kl * bev * 0.9;                     // crisp platinum catch-lights on the chamfers
+            chm = vec3(0.90, 0.94, 0.99) * kl * bev * 0.9;                     // crisp platinum catch-lights on the chamfers
           #endif
           float fres = pow(1.0 - ndv, 3.0);
           // satin face: a soft top-left to bottom-right graphite-to-silver falloff (no lines, no facets)
           float face = smoothstep(0.55, 0.92, ndv);
           float grad = smoothstep(-0.5, 0.55, lp.y * 0.85 - lp.x * 0.35);
-          vec3 faceCol = mix(vec3(0.0), vec3(0.026, 0.027, 0.028), grad * grad);
+          vec3 faceCol = mix(vec3(0.0), vec3(0.014, 0.022, 0.040), grad * grad);
           totalEmissiveRadiance += chm + faceCol * face
-                                 + vec3(0.30, 0.55, 0.46) * fres * 0.05                  // the faintest green edge light
-                                 + vec3(0.92, 0.94, 0.95) * band * (0.025 + fres * 0.6)  // the light sweep
-                                 + vec3(0.80, 0.86, 0.84) * edgeGlow * 1.1;
+                                 + vec3(0.26, 0.44, 0.74) * fres * 0.07                  // a restrained sapphire edge light
+                                 + vec3(0.86, 0.92, 1.00) * band * (0.025 + fres * 0.6)  // the light sweep, ice-silver
+                                 + vec3(0.70, 0.82, 0.98) * edgeGlow * 1.1;
         }`);
       sh.uniforms.uScaleInv = scaleInv;
     };
@@ -118,7 +118,7 @@ function start() {
   const scaleInv = { value: 1 };
   // satin black chrome: a metal body that only shows the studio as long, soft reflections
   const gemMat = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color('#8e9296'), metalness: 1.0, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.06,
+    color: new THREE.Color('#7f8fa8'), metalness: 1.0, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.06,
     envMapIntensity: 1.0, flatShading: true
   });
   jewelize(gemMat, 'gem');
@@ -157,8 +157,8 @@ function start() {
     const delay = (tx + 0.5) * 0.42 + Math.random() * 0.22;
     const bright = cls === 0 ? 0.5 + Math.random() * 0.4 : 0.8 + Math.random() * 0.5;
     aS[i * 4] = delay; aS[i * 4 + 1] = 0.6 + Math.random() * 0.9; aS[i * 4 + 2] = bright; aS[i * 4 + 3] = Math.random();
-    // silver grains with a whisper of sage: a few on the face and edges, rare pale sparks
-    const pe = cls === 0 ? .08 : .05;
+    // silver-blue grains with a share of ice-sapphire: a few on the face and edges, rare pale sparks
+    const pe = cls === 0 ? .16 : .12;
     aK[i] = Math.random() < pe ? (Math.random() < .06 ? 1.0 : .7) : 0;
   }
   const geo = new THREE.BufferGeometry();
@@ -227,9 +227,9 @@ function start() {
         float glint=pow(aSeed.w,10.0);
         float l=exp(-dot(position.xy-uLight,position.xy-uLight)*7.0);
         float settle=uSolid*fe*(1.0-b);                 // once the jewel is solid, grains step back
-        float k=(br*0.36 + l*0.24*br + (1.0-fe)*0.08)*mix(1.0,0.02,settle) + band*(0.55+glint*5.0)*mix(1.0,0.18,settle);
-        vec3 plat=mix(vec3(0.88,0.89,0.91),vec3(0.94,0.93,0.91),aSeed.w);
-        vec3 jade=mix(vec3(0.58,0.70,0.65),vec3(0.80,0.90,0.85),step(0.95,aEm));
+        float k=(br*0.48 + l*0.28*br + (1.0-fe)*0.12)*mix(1.0,0.03,settle) + band*(0.55+glint*5.0)*mix(1.0,0.18,settle);
+        vec3 plat=mix(vec3(0.84,0.89,0.97),vec3(0.93,0.95,1.00),aSeed.w);
+        vec3 jade=mix(vec3(0.52,0.68,0.92),vec3(0.78,0.88,1.00),step(0.95,aEm));
         vCol=mix(plat,jade,step(0.5,aEm))*k;
         vA=(1.0-smoothstep(0.55,1.0,b))*smoothstep(0.0,0.08,uForm+0.02)/(dof*dof);
         vSpec=band*(0.4+glint*2.0)*mix(1.0,0.25,settle);
@@ -242,9 +242,11 @@ function start() {
         float body=smoothstep(0.5,0.0,r); body*=body;
         float core=exp(-r*r*60.0);
         float spec=exp(-dot(d-vec2(-0.12,-0.14),d-vec2(-0.12,-0.14))*140.0);
-        vec3 c=vCol*(body*0.75+core*0.55)+vec3(0.95,0.96,0.97)*spec*(0.10+vSpec)*vA;
-        gl_FragColor=vec4(c*vA,1.0);
-      }`
+        vec3 c=vCol*(body*0.75+core*0.55)+vec3(0.92,0.96,1.00)*spec*(0.10+vSpec)*vA;
+        vec3 o=c*vA;
+        gl_FragColor=vec4(o,clamp(max(o.r,max(o.g,o.b)),0.0,1.0));   // v7: alpha follows light, so faint grains never darken the page
+      }`,
+    premultipliedAlpha: true
   });
   const pts = new THREE.Points(geo, mat);
   pts.renderOrder = 2;
@@ -313,18 +315,18 @@ function start() {
     const form = Math.min(1, Math.max(0, (t - 0.35) / 4.4));
     U.uTime.value = t; U.uForm.value = form;
     U.uSolid.value = sm(3.0, 5.4, t);
-    U.uBlow.value = sm(0.02, 0.5, p);
+    U.uBlow.value = sm(0.0, 0.55, p);
     const D = NX.bandAt(t, W, innerHeight);
     const S = emPx * Z0 / z, Dc = (W / 2) * 0.788 + (r.top + H / 2 > 0 ? H / 2 : 0) * 0.616;
     U.uSweep.value = D == null ? -9 : (D - Dc) / S;
     U.uLight.value.set(m.x * 0.5 - 0.15, -m.y * 0.5 + 0.2);
     gem.visible = U.uSolid.value > 0.001 && U.uBlow.value < 0.999;
 
-    setVar('--solid', (sm(3.3, 5.6, t) * (1 - sm(0.03, 0.22, p))).toFixed(2));
-    setVar('--intro', (sm(4.8, 6.2, t) * (1 - sm(0.0, 0.07, p))).toFixed(3));
-    setVar('--hp', sm(0.2, 0.5, p).toFixed(3));
-    setVar('--hs', (sm(0.2, 0.8, p) * 1.3).toFixed(3));
-    setVar('--lp', sm(0.42, 0.62, p).toFixed(3));
+    setVar('--solid', (sm(3.3, 5.6, t) * (1 - sm(0.03, 0.25, p))).toFixed(2));
+    setVar('--intro', (sm(4.8, 6.2, t) * (1 - sm(0.0, 0.1, p))).toFixed(3));
+    setVar('--hp', sm(0.18, 0.55, p).toFixed(3));
+    setVar('--hs', (sm(0.18, 0.85, p) * 1.3).toFixed(3));
+    setVar('--lp', sm(0.4, 0.7, p).toFixed(3));
     renderer.render(scene, camera);
   });
 }

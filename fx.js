@@ -1,4 +1,4 @@
-/* Grain assembly v5: titles and cards condense from grains, then the real element appears
+/* Grain assembly v7 (lighter: capped grains, one draw pass, max 4 at once, solid hairline frames): titles and cards condense from grains, then the real element appears
    exactly underneath them. Rules that keep the sketch and the solid in the same place:
    - fx elements and their ancestors never transform during a reveal (opacity / mask only);
    - targets are sampled after fonts load, from the element's live layout box;
@@ -44,7 +44,7 @@
       }
     }
     const d = x.getImageData(0, 0, w, h).data, pts = [];
-    const step = mobile ? 2.5 : 2.0, cap = mobile ? 2800 : 7000;
+    const step = mobile ? 2.8 : 2.4, cap = mobile ? 1500 : 3200;
     for (let yy = 0; yy < h; yy += step) for (let xx = 0; xx < w; xx += step) {
       const jx = xx + rand() * step, jy = yy + rand() * step;
       if (d[((jy | 0) * w + (jx | 0)) * 4 + 3] > 110) pts.push(jx, jy);
@@ -70,41 +70,54 @@
       if (s < L2) return [i0, h - rad - s]; s -= L2;
       const a = Math.PI + s / rad; return [rad + Math.cos(a) * R, rad + Math.sin(a) * R];
     };
-    for (let s = 0; s < per; s += step) { const [x, y] = at(s + rand() * step); pts.push(x, y); }
-    const dust = Math.min(mobile ? 200 : 480, (w * h) / 1500);
+    const dust = Math.min(mobile ? 60 : 140, (w * h) / 3000);
     for (let i = 0; i < dust; i++) pts.push(rad * .5 + rand() * (w - rad), 6 + Math.pow(rand(), 1.8) * h * .4);
-    return { pts, w, h, r };
+    return { pts, w, h, r, at, per, rad };
   }
 
   const items = [], active = new Set();
-  const DUR = 1.0, LAND = .72;          // grains are within ~1px of their target by u = LAND
+  const DUR = .8, LAND = .72, MAXA = 4, END = 1.75;   // MAXA: concurrent load (a title = 1, a card frame = .4)
+  const cost = it => it.type === 'text' ? 1 : .4;
+  let load = 0;          // grains are within ~1px of their target by u = LAND
   function build(it) {
     const s = it.type === 'text' ? sampleText(it.el) : sampleFrame(it.el);
     const n = s.pts.length / 2, P = new Float32Array(n * 8);
     const spread = it.type === 'text' ? 1 : .75;
-    for (let i = 0; i < n; i++) {
-      const tx = s.pts[i * 2], ty = s.pts[i * 2 + 1], fx = clamp(tx / s.w, 0, 1);
+    // colour class first, then sort so each class is one contiguous run (one fillStyle per run)
+    const cls = new Uint8Array(n); for (let i = 0; i < n; i++) cls[i] = rand() < .16 ? (rand() < .3 ? 2 : 1) : 0;
+    const ord = [...Array(n).keys()].sort((a, b) => cls[a] - cls[b]);
+    it.runs = [0, 0, 0, n]; for (let i = 0; i < n; i++) { if (cls[ord[i]] >= 1 && !it.runs[1]) it.runs[1] = i; if (cls[ord[i]] >= 2 && !it.runs[2]) it.runs[2] = i; }
+    if (!it.runs[1]) it.runs[1] = n; if (!it.runs[2]) it.runs[2] = n;
+    for (let q = 0; q < n; q++) {
+      const i = q, src = ord[q];
+      const tx = s.pts[src * 2], ty = s.pts[src * 2 + 1], fx = clamp(tx / s.w, 0, 1);
       P[i * 8] = tx; P[i * 8 + 1] = ty;
       P[i * 8 + 2] = (-60 - rand() * 150) * spread;                 // drift in from the left
       P[i * 8 + 3] = ((rand() - .5) * 90 + (rand() - .5) * 30) * spread;
       P[i * 8 + 4] = fx * .35 + rand() * .10;                       // delay: left lands first, like the hero
-      P[i * 8 + 5] = .62 + rand() * .5;                             // brightness
+      P[i * 8 + 5] = .7 + rand() * .45;                             // brightness
       P[i * 8 + 6] = rand() * 6.283;                                // swirl phase
-      P[i * 8 + 7] = rand() < .14 ? (rand() < .3 ? 2 : 1) : 0;      // 0 silver, 1 sage whisper, 2 pale spark
+      P[i * 8 + 7] = cls[src];                                     // 0 silver-blue, 1 ice sapphire, 2 pale spark
     }
-    it.P = P; it.n = n; it.w = s.w; it.h = s.h;
+    it.P = P; it.n = n; it.w = s.w; it.h = s.h; it.at = s.at; it.per = s.per; it.rad = s.rad;
   }
+  const queue = [];
   function start(it, delay) {
     if (it.state) return;
-    it.state = 'run'; it.t0 = performance.now() + delay * 1000;
-    try { build(it); } catch (e) { finish(it); return; }
+    if (load + cost(it) > MAXA + .01) { if (!queue.includes(it)) queue.push(it); return; }
+    it.state = 'run'; load += cost(it); it.t0 = performance.now() + delay * 1000;
     active.add(it);
+    try { build(it); } catch (e) { finish(it); return; }
   }
   function finish(it) {
-    it.state = 'done'; active.delete(it); dirty = true;
+    if (it.state === 'done') return;
+    if (active.delete(it)) load = Math.max(0, load - cost(it));
+    it.state = 'done'; dirty = true;
     const s = it.el.style;
     if (it.type === 'text') { s.removeProperty('--gx'); it.el.classList.add('fx-done'); }
     else { s.removeProperty('--gf'); s.removeProperty('--gc'); it.el.classList.add('fx-done'); }
+    it.P = null;
+    while (queue.length && load + cost(queue[0]) <= MAXA + .01) start(queue.shift(), 0);
   }
   // resize: re-sample whatever is mid-reveal so the targets match the new layout
   addEventListener('resize', () => { size(); active.forEach(it => { try { build(it); } catch (e) { finish(it); } }); }, { passive: true });
@@ -123,7 +136,7 @@
     clearTimeout(batchT);
     batchT = setTimeout(() => {
       batch.sort((a, b) => (a.r.top - b.r.top) || (a.r.left - b.r.left));
-      batch.forEach((b, k) => start(b.it, k * .12));
+      batch.forEach((b, k) => start(b.it, Math.min(k, 6) * .07));
       batch = [];
     }, 30);
   }, { threshold: .22, rootMargin: '0px 0px -4% 0px' });
@@ -131,7 +144,11 @@
   const go = () => items.forEach(it => io.observe(it.el));
   (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(go, go);
 
-  const COL = ['#e9ebed', '#a9c2b7', '#f3f5f6'];   // silver, a whisper of sage, pale spark
+  const COL = ['#e6eef8', '#9fc4e6', '#f5f8fc'];   // silver-blue, ice sapphire, pale spark
+  // a soft ice-blue head for the hairline trace (pre-rendered once)
+  const head = document.createElement('canvas'); head.width = head.height = 32;
+  { const h = head.getContext('2d'), gr = h.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(235,244,255,.95)'); gr.addColorStop(.25, 'rgba(169,203,232,.45)'); gr.addColorStop(1, 'rgba(169,203,232,0)'); h.fillStyle = gr; h.fillRect(0, 0, 32, 32); }
+  const setv = (it, k, v) => { if (it['_' + k] !== v) { it['_' + k] = v; it.el.style.setProperty(k, v); } };
   const dbg = window.__fx = { items, active, at: null };   // `at` freezes reveal time (s) for alignment checks
 
   // read phase: live boxes of everything mid-reveal
@@ -146,32 +163,47 @@
       const r = it.r || it.el.getBoundingClientRect();
       const P = it.P, n = it.n, text = it.type === 'text';
       // the solid appears only where grains have landed
-      const front = (tt - .10 - DUR * LAND) / .35;                   // landed fraction of the width
-      if (text) it.el.style.setProperty('--gx', clamp((front + .125) / 1.25, 0, 1).toFixed(3));
+      const front = (tt - .10 - DUR * LAND) / .3;                    // landed fraction of the width
+      if (text) setv(it, '--gx', clamp((front + .125) / 1.25, 0, 1).toFixed(2));
       else {
-        it.el.style.setProperty('--gf', sm(.45 + DUR * LAND, .95 + DUR * LAND, tt).toFixed(3));
-        it.el.style.setProperty('--gc', expoOut(clamp((tt - 1.25) / .8, 0, 1)).toFixed(3));
+        setv(it, '--gf', sm(.3 + DUR * LAND, .7 + DUR * LAND, tt).toFixed(2));
+        setv(it, '--gc', expoOut(clamp((tt - .95) / .6, 0, 1)).toFixed(2));
       }
-      if (dbg.at == null && tt > 2.4) { finish(it); continue; }
+      if (dbg.at == null && tt > END) { finish(it); continue; }
       if (r.bottom < -40 || r.top > H + 40) continue;
+      if (!text) {
+        // solid hairline traced clockwise from the top-left, with a soft travelling head; hands over to the CSS rim
+        const prog = expoOut(clamp((tt - .05) / (DUR * .95), 0, 1)), fade = 1 - sm(.55 + DUR * LAND, 1.0 + DUR * LAND, tt);
+        if (fade > .01) {
+          const w = it.w, h = it.h, rad = it.rad;
+          g.globalAlpha = .55 * fade; g.strokeStyle = '#c4dcf5'; g.lineWidth = 1;
+          g.setLineDash([it.per * prog, it.per + 10]); g.lineDashOffset = 0;
+          g.beginPath();
+          if (g.roundRect) g.roundRect(r.left + .5, r.top + .5, w - 1, h - 1, rad); else g.rect(r.left + .5, r.top + .5, w - 1, h - 1);
+          g.stroke(); g.setLineDash([]);
+          if (prog < .995) { const [hx, hy] = it.at(it.per * prog); g.globalAlpha = fade; g.drawImage(head, r.left + hx - 16, r.top + hy - 16); }
+        }
+      }
+      const s = text ? 1.7 : 1.5, hs = s / 2;
       for (let c = 0; c < 3; c++) {
         g.fillStyle = COL[c];
-        for (let i = 0; i < n; i++) {
-          const o = i * 8; if (P[o + 7] !== c) continue;
+        for (let i = it.runs[c], e = it.runs[c + 1]; i < e; i++) {
+          const o = i * 8;
           const u = (tt - P[o + 4]) / DUR;
           if (u <= 0) continue;
-          const k = expoOut(Math.min(1, u)), inv = 1 - k;
-          const x = r.left + P[o] + P[o + 2] * inv + Math.sin(P[o + 6] + tt * 3.1) * 12 * inv;
-          const y = r.top + P[o + 1] + P[o + 3] * inv + Math.cos(P[o + 6] + tt * 2.3) * 9 * inv;
-          // fade once the solid under this grain is fully in
           const fxn = P[o] / it.w;
-          const full = text ? .10 + DUR * LAND + .35 * (fxn + .25) : .95 + DUR * LAND;
-          const fade = 1 - sm(full - .05, full + .4, tt);
+          const full = text ? .10 + DUR * LAND + .3 * (fxn + .25) : .7 + DUR * LAND;
+          const fade = 1 - sm(full - .05, full + .3, tt);
           const a = Math.min(1, u * 4) * fade * P[o + 5];
-          if (a < .02) continue;
+          if (a < .03) continue;
+          let x = r.left + P[o], y = r.top + P[o + 1];
+          if (u < 1) {
+            const k = expoOut(u), inv = 1 - k;
+            x += P[o + 2] * inv + Math.sin(P[o + 6] + tt * 3.1) * 12 * inv;
+            y += P[o + 3] * inv + Math.cos(P[o + 6] + tt * 2.3) * 9 * inv;
+          }
           g.globalAlpha = a;
-          const s = text ? 1.4 : 1.25;
-          g.fillRect(x - s / 2, y - s / 2, s, s);
+          g.fillRect(x - hs, y - hs, s, s);
         }
       }
     }

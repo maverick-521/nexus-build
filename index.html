@@ -3,32 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Nexus Build — Freelance software studio</title>
-<meta name="description" content="Nexus Build builds AI assistants, Telegram and Discord bots, automations, scrapers, websites, web apps and deployments, with clear scopes and honest starting prices.">
-<meta name="theme-color" content="#0a0a0c">
+<title>Nexus Build — AI, web &amp; growth studio</title>
+<meta name="description" content="Nexus Build: AI assistants and automation, short-form video, social media, websites, SEO, Shopify stores, brand kits and email marketing, with clear scopes and honest starting prices.">
+<meta name="theme-color" content="#050b18">
 <meta name="color-scheme" content="dark">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%229%22 fill=%22%23101113%22/%3E%3Cpath d=%22M8.45%2024%208.45%208%2013.35%208%2021.45%2020.71%2021.45%208%2023.55%208%2023.55%2024%2018.65%2024%2010.55%2011.29%2010.55%2024Z%22 fill=%22%23E6E8EA%22/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%229%22 fill=%22%230a1428%22/%3E%3Cpath d=%22M8.45%2024%208.45%208%2013.35%208%2021.45%2020.71%2021.45%208%2023.55%208%2023.55%2024%2018.65%2024%2010.55%2011.29%2010.55%2024Z%22 fill=%22%23E4EBF4%22/%3E%3C/svg%3E">
 <link rel="preload" href="clash-display-500.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="general-sans-400.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="modulepreload" href="three.module.min.js">
-<link rel="stylesheet" href="style.css">
+<link rel="modulepreload" href="./three.module.min.js?v=7">
+<link rel="stylesheet" href="style.css?v=7">
 <script>document.documentElement.classList.replace('no-js','js')</script>
-<script type="importmap">{"imports":{"three":"./three.module.min.js"}}</script>
+<script type="importmap">{"imports":{"three":"./three.module.min.js?v=7"}}</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 
 <svg class="defs" aria-hidden="true" focusable="false" width="0" height="0">
   <defs>
-    <linearGradient id="g-mark" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox"><stop offset="0" stop-color="#f4f5f6"/><stop offset=".55" stop-color="#c9ccd0"/><stop offset="1" stop-color="#8f9499"/></linearGradient>
+    <linearGradient id="g-mark" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox"><stop offset="0" stop-color="#eff5fc"/><stop offset=".55" stop-color="#c6ccd3"/><stop offset="1" stop-color="#808fa7"/></linearGradient>
     <linearGradient id="g-metal" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#3a3d44"/><stop offset=".45" stop-color="#16181c"/><stop offset=".7" stop-color="#0c0d10"/><stop offset="1" stop-color="#22252b"/>
+      <stop offset="0" stop-color="#243455"/><stop offset=".45" stop-color="#0e1525"/><stop offset=".7" stop-color="#080b16"/><stop offset="1" stop-color="#162036"/>
     </linearGradient>
     <linearGradient id="g-edge" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f2f1ee" stop-opacity=".9"/><stop offset=".35" stop-color="#8d9098" stop-opacity=".35"/><stop offset=".7" stop-color="#2a2c31" stop-opacity=".2"/><stop offset="1" stop-color="#cfd2da" stop-opacity=".55"/>
+      <stop offset="0" stop-color="#eaf0f7" stop-opacity=".9"/><stop offset=".35" stop-color="#7e8da4" stop-opacity=".35"/><stop offset=".7" stop-color="#1a263f" stop-opacity=".2"/><stop offset="1" stop-color="#ced4db" stop-opacity=".55"/>
     </linearGradient>
     <linearGradient id="g-line" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#8e93a0"/><stop offset=".6" stop-color="#dfe2ea"/><stop offset="1" stop-color="#ffffff"/>
+      <stop offset="0" stop-color="#7f93b3"/><stop offset=".6" stop-color="#dce6f2"/><stop offset="1" stop-color="#ffffff"/>
     </linearGradient>
     <linearGradient id="g-area" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#cfd4e2" stop-opacity=".16"/><stop offset="1" stop-color="#cfd4e2" stop-opacity="0"/>
@@ -71,14 +71,14 @@
     <canvas id="grains" aria-hidden="true"></canvas>
     <div class="spot" aria-hidden="true"></div>
     <div class="em-floor" aria-hidden="true"></div>
-    <div class="em-static" aria-hidden="true"><svg viewBox="-60 -60 120 120"><defs><linearGradient id="g-n" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b5f64"/><stop offset=".45" stop-color="#1b1c1f"/><stop offset=".8" stop-color="#0e0f11"/><stop offset="1" stop-color="#3a3e42"/></linearGradient></defs><path d="M-34 36 -34 -36 -12 -36 26.5 24.26 26.5 -36 34 -36 34 36 12 36 -26.5 -24.26 -26.5 36Z" fill="url(#g-n)" stroke="#e4e6e8" stroke-opacity=".55" stroke-width=".6"/></svg></div>
+    <div class="em-static" aria-hidden="true"><svg viewBox="-60 -60 120 120"><defs><linearGradient id="g-n" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4e5b6f"/><stop offset=".45" stop-color="#11182a"/><stop offset=".8" stop-color="#090d19"/><stop offset="1" stop-color="#243454"/></linearGradient></defs><path d="M-34 36 -34 -36 -12 -36 26.5 24.26 26.5 -36 34 -36 34 36 12 36 -26.5 -24.26 -26.5 36Z" fill="url(#g-n)" stroke="#e0e6ed" stroke-opacity=".55" stroke-width=".6"/></svg></div>
     <div class="stage-intro">
       <p class="kicker">Nexus Build</p>
-      <p class="kicker-sub">AI, automation &amp; software studio</p>
+      <p class="kicker-sub">AI, web &amp; growth studio</p>
     </div>
     <div class="stage-copy">
       <h1 class="headline"><span class="hl-line">Software that</span> <span class="hl-line">keeps running.</span></h1>
-      <p class="lede">AI assistants, LLM integrations and automations first, plus bots, scrapers, websites and web apps. Scoped clearly, priced honestly and built to keep working after handover.</p>
+      <p class="lede">AI assistants and automation, plus the work clients hire for most: short-form video, social media, websites, SEO, Shopify stores and brand kits. Scoped clearly, priced honestly and built to keep working after handover.</p>
       <div class="cta-row">
         <a class="btn btn-metal btn-lg magnetic" href="mailto:nexusbuild@mail.grokbot.com?subject=New%20project"><span class="lbl">Start a project</span><span class="arrow" aria-hidden="true">→</span></a>
         <a class="btn btn-quiet" href="#build">What we build</a>
@@ -95,10 +95,10 @@
     <header class="sec-head split">
       <div>
         <p class="label reveal">What we build</p>
-        <h2 class="h2 metal-text fx-text sweepable">Seven things<br>we do well.</h2>
+        <h2 class="h2 metal-text fx-text sweepable">Nine things<br>we do well.</h2>
       </div>
       <div class="sec-aside">
-        <p class="sec-copy reveal">Ordered by what clients hire for most on freelance marketplaces in 2026, with AI integration and automation first. Each one has a clear outcome, a typical turnaround and a starting price. Drag the lens, or swipe the panel.</p>
+        <p class="sec-copy reveal">Built around what clients hire for most on freelance marketplaces in 2026: AI, video, social, web, SEO and e-commerce. Each one has a clear outcome, a typical turnaround and a starting price. Drag the lens, or swipe the panel.</p>
         <div class="cur-wrap reveal">
           <span class="cur-label" id="cur-label">Currency</span>
           <div class="lg lg-sm" data-lg="currency" role="radiogroup" aria-labelledby="cur-label">
@@ -116,19 +116,21 @@
         <div class="lg lg-big" data-lg="services" role="tablist" aria-label="Services">
           <span class="lg-lens" aria-hidden="true"></span>
 <button class="lg-opt" role="tab" id="tab-ai" aria-controls="panel-ai" aria-selected="true" tabindex="0" title="AI assistants &amp; LLM integrations"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5Z"/><path d="M12 6.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9Z"/></svg><span class="t-lbl">AI assistants</span></button>
-<button class="lg-opt" role="tab" id="tab-auto" aria-controls="panel-auto" aria-selected="false" tabindex="-1" title="Workflow automation &amp; integrations"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7 6h10M6.2 7.7l4.6 8.6M17.8 7.7l-4.6 8.6"/></svg><span class="t-lbl">Automation</span></button>
-<button class="lg-opt" role="tab" id="tab-bots" aria-controls="panel-bots" aria-selected="false" tabindex="-1" title="Telegram &amp; Discord bots"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4 3 11l6 2 2 6 3-4 4 3 3-14Z"/><path d="m9 13 7-5"/></svg><span class="t-lbl">Bots</span></button>
-<button class="lg-opt" role="tab" id="tab-scrape" aria-controls="panel-scrape" aria-selected="false" tabindex="-1" title="Web scraping &amp; data pipelines"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 10h16M4 15h9M4 20h6"/><path d="m16 15 4 2.5-4 2.5Z"/></svg><span class="t-lbl">Scraping</span></button>
-<button class="lg-opt" role="tab" id="tab-web" aria-controls="panel-web" aria-selected="false" tabindex="-1" title="Websites &amp; landing pages"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18M6.5 6.5h.01M9.5 6.5h.01M7 13h6M7 16h10"/></svg><span class="t-lbl">Websites</span></button>
-<button class="lg-opt" role="tab" id="tab-apps" aria-controls="panel-apps" aria-selected="false" tabindex="-1" title="Web apps &amp; custom dashboards"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7.5" height="9" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="5" rx="1.6"/><rect x="13.5" y="11" width="7.5" height="10" rx="1.6"/><rect x="3" y="15" width="7.5" height="6" rx="1.6"/></svg><span class="t-lbl">Web apps</span></button>
-<button class="lg-opt" role="tab" id="tab-ops" aria-controls="panel-ops" aria-selected="false" tabindex="-1" title="Deployment &amp; DevOps"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01M11 7.5h6M11 16.5h6"/></svg><span class="t-lbl">DevOps</span></button>
+<button class="lg-opt" role="tab" id="tab-video" aria-controls="panel-video" aria-selected="false" tabindex="-1" title="Short-form video editing"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9.2 4.6 2.8-4.6 2.8Z"/></svg><span class="t-lbl">Video</span></button>
+<button class="lg-opt" role="tab" id="tab-social" aria-controls="panel-social" aria-selected="false" tabindex="-1" title="Social media content &amp; management"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.8"/><path d="M16.8 7.2h.01"/></svg><span class="t-lbl">Social</span></button>
+<button class="lg-opt" role="tab" id="tab-web" aria-controls="panel-web" aria-selected="false" tabindex="-1" title="Websites, landing pages &amp; web apps"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18M6.5 6.5h.01M9.5 6.5h.01M7 13h6M7 16h10"/></svg><span class="t-lbl">Websites</span></button>
+<button class="lg-opt" role="tab" id="tab-seo" aria-controls="panel-seo" aria-selected="false" tabindex="-1" title="SEO audit &amp; content"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/><path d="m7.6 12.4 2-2 1.6 1.5 2.3-2.9"/></svg><span class="t-lbl">SEO</span></button>
+<button class="lg-opt" role="tab" id="tab-shop" aria-controls="panel-shop" aria-selected="false" tabindex="-1" title="Shopify store setup"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1.1 11.2a2 2 0 0 1-2 1.8H8.1a2 2 0 0 1-2-1.8Z"/><path d="M9 10V7a3 3 0 0 1 6 0v3"/></svg><span class="t-lbl">Shopify</span></button>
+<button class="lg-opt" role="tab" id="tab-brand" aria-controls="panel-brand" aria-selected="false" tabindex="-1" title="Logo &amp; brand kit"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 18 10l-6 10.5L6 10Z"/><circle cx="12" cy="10.5" r="1.6"/><path d="M12 12.1v8.4"/></svg><span class="t-lbl">Brand</span></button>
+<button class="lg-opt" role="tab" id="tab-email" aria-controls="panel-email" aria-selected="false" tabindex="-1" title="Email marketing setup"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/></svg><span class="t-lbl">Email</span></button>
+<button class="lg-opt" role="tab" id="tab-auto" aria-controls="panel-auto" aria-selected="false" tabindex="-1" title="Automation, bots &amp; data"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7 6h10M6.2 7.7l4.6 8.6M17.8 7.7l-4.6 8.6"/></svg><span class="t-lbl">Automation</span></button>
         </div>
       </div>
       <div class="sv-stage glass sheen fx-frame" aria-live="polite">
         <div class="sv-light" aria-hidden="true"></div>
 <article class="sv-panel" role="tabpanel" id="panel-ai" aria-labelledby="tab-ai" data-i="0">
   <div class="sv-main">
-    <p class="sv-count"><span>01</span> / 07</p>
+    <p class="sv-count"><span>01</span> / 09</p>
     <h3 class="sv-name">AI assistants &amp; LLM integrations</h3>
     <p class="sv-outcome">An assistant that answers from your own docs, data and tools.</p>
     <ul class="sv-inc"><li>Custom GPT-style assistant or chat widget</li><li>Answers grounded in your documents (RAG), with sources</li><li>Connected to your site, app, Slack or Telegram</li><li>Usage limits, logging and a handover guide</li></ul>
@@ -142,100 +144,132 @@
     <a class="btn btn-metal magnetic" href="mailto:nexusbuild@mail.grokbot.com?subject=AI%20assistant%20project"><span class="lbl">Ask about this</span><span class="arrow" aria-hidden="true">→</span></a>
   </aside>
 </article>
-<article class="sv-panel" role="tabpanel" id="panel-auto" aria-labelledby="tab-auto" data-i="1" hidden>
+<article class="sv-panel" role="tabpanel" id="panel-video" aria-labelledby="tab-video" data-i="1" hidden>
   <div class="sv-main">
-    <p class="sv-count"><span>02</span> / 07</p>
-    <h3 class="sv-name">Workflow automation &amp; integrations</h3>
-    <p class="sv-outcome">Hours of copy-paste replaced by a workflow that runs itself.</p>
-    <ul class="sv-inc"><li>Zapier, Make or n8n workflows</li><li>Custom API integrations and webhooks</li><li>Python or Node scripts and scheduled jobs</li><li>Error alerts and a one-page runbook</li></ul>
+    <p class="sv-count"><span>02</span> / 09</p>
+    <h3 class="sv-name">Short-form video editing</h3>
+    <p class="sv-outcome">Reels, TikToks and Shorts cut to hold attention past the first second.</p>
+    <ul class="sv-inc"><li>Hook-first edits from your raw footage</li><li>Captions, music, b-roll and brand styling</li><li>Vertical, square and widescreen exports</li><li>Pack of 3 edits, with one revision round each</li></ul>
   </div>
   <aside class="sv-side">
-    <div class="sv-tile" aria-hidden="true"><svg class="ico big" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7 6h10M6.2 7.7l4.6 8.6M17.8 7.7l-4.6 8.6"/></svg></div>
+    <div class="sv-tile" aria-hidden="true"><svg class="ico big" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9.2 4.6 2.8-4.6 2.8Z"/></svg></div>
     <dl class="sv-facts">
-      <div><dt>Typical turnaround</dt><dd>3–7 days</dd></div>
-      <div><dt>From</dt><dd class="sv-price"><span class="price-val metal-text" data-usd="200">$200</span></dd></div>
+      <div><dt>Typical turnaround</dt><dd>2–4 days</dd></div>
+      <div><dt>From</dt><dd class="sv-price"><span class="price-val metal-text" data-usd="90">$90</span></dd></div>
     </dl>
-    <a class="btn btn-metal magnetic" href="mailto:nexusbuild@mail.grokbot.com?subject=Automation%20project"><span class="lbl">Ask about this</span><span class="arrow" aria-hidden="true">→</span></a>
+    <a class="btn btn-metal magnetic" href="mailto:nexusbuild@mail.grokbot.com?subject=Video%20editing%20project"><span class="lbl">Ask about this</span><span class="arrow" aria-hidden="true">→</span></a>
   </aside>
 </article>
-<article class="sv-panel" role="tabpanel" id="panel-bots" aria-labelledby="tab-bots" data-i="2" hidden>
+<article class="sv-panel" role="tabpanel" id="panel-social" aria-labelledby="tab-social" data-i="2" hidden>
   <div class="sv-main">
-    <p class="sv-count"><span>03</span> / 07</p>
-    <h3 class="sv-name">Telegram &amp; Discord bots</h3>
-    <p class="sv-outcome">A bot your community or team actually uses, every day.</p>
-    <ul class="sv-inc"><li>Commands, menus, alerts and roles</li><li>Admin controls and a readable config</li><li>Database for users and settings</li><li>Deployed with auto-restart and logs</li></ul>
+    <p class="sv-count"><span>03</span> / 09</p>
+    <h3 class="sv-name">Social media content &amp; management</h3>
+    <p class="sv-outcome">A steady, on-brand feed without you writing every post.</p>
+    <ul class="sv-inc"><li>Monthly content plan for two platforms</li><li>12 designed posts with captions and hashtags</li><li>Scheduling and profile clean-up</li><li>Monthly report on reach and engagement</li></ul>
   </div>
   <aside class="sv-side">
-    <div class="sv-tile" aria-hidden="true"><svg class="ico big" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4 3 11l6 2 2 6 3-4 4 3 3-14Z"/><path d="m9 13 7-5"/></svg></div>
+    <div class="sv-tile" aria-hidden="true"><svg class="ico big" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.8"/><path d="M16.8 7.2h.01"/></svg></div>
     <dl class="sv-facts">
-      <div><dt>Typical turnaround</dt><dd>5–10 days</dd></div>
-      <div><dt>From</dt><dd class="sv-price"><span class="price-val metal-text" data-usd="200">$200</span></dd></div>
+      <div><dt>Typical turnaround</dt><dd>Monthly, starts in 5–7 days</dd></div>
+      <div><dt>From</dt><dd class="sv-price"><span class="price-val metal-text" data-usd="250">$250</span></dd></div>
     </dl>
-    <a class="btn btn-metal magnetic" href="mailto:nexusbuild@mail.grokbot.com?subject=Bot%20project"><span class="lbl">Ask about this</span><span class="arrow" aria-hidden="true">→</span></a>
+    <a class="btn btn-metal magnetic" href="mailto:nexusbuild@mail.grokbot.com?subject=Social%20media%20project"><span class="lbl">Ask about this</span><span class="arrow" aria-hidden="true">→</span></a>
   </aside>
 </article>
-<article class="sv-panel" role="tabpanel" id="panel-scrape" aria-labelledby="tab-scrape" data-i="3" hidden>
+<article class="sv-panel" role="tabpanel" id="panel-web" aria-labelledby="tab-web" data-i="3" hidden>
   <div class="sv-main">
-    <p class="sv-count"><span>04</span> / 07</p>
-    <h3 class="sv-name">Web scraping &amp; data pipelines</h3>
-    <p class="sv-outcome">Clean, structured data, delivered where you need it.</p>
-    <ul class="sv-inc"><li>Scrapers for public sites and APIs</li><li>Cleaning, de-duplication and validation</li><li>Export to CSV, Google Sheets or a database</li><li>Scheduled runs with change alerts</li></ul>
-  </div>
-  <aside class="sv-side">
-    <div class="sv-tile" aria-hidden="true"><svg class="ico big" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 10h16M4 15h9M4 20h6"/><path d="m16 15 4 2.5-4 2.5Z"/></svg></div>
-    <dl class="sv-facts">
-      <div><dt>Typical turnaround</dt><dd>3–7 days</dd></div>
-      <div><dt>From</dt><dd class="sv-price"><span class="price-val metal-text" data-usd="150">$150</span></dd></div>
-    </dl>
-    <a class="btn btn-metal magnetic" href="mailto:nexusbuild@mail.grokbot.com?subject=Scraping%20project"><span class="lbl">Ask about this</span><span class="arrow" aria-hidden="true">→</span></a>
-  </aside>
-</article>
-<article class="sv-panel" role="tabpanel" id="panel-web" aria-labelledby="tab-web" data-i="4" hidden>
-  <div class="sv-main">
-    <p class="sv-count"><span>05</span> / 07</p>
-    <h3 class="sv-name">Websites &amp; landing pages</h3>
-    <p class="sv-outcome">A fast page that explains what you do and turns visitors into enquiries.</p>
-    <ul class="sv-inc"><li>Custom design and responsive build</li><li>Copy structure and SEO basics</li><li>Analytics and a working contact form</li><li>Hosting and domain setup</li></ul>
+    <p class="sv-count"><span>04</span> / 09</p>
+    <h3 class="sv-name">Websites, landing pages &amp; web apps</h3>
+    <p class="sv-outcome">A fast site or tool that explains what you do and turns visitors into enquiries.</p>
+    <ul class="sv-inc"><li>Custom design and responsive build</li><li>Landing pages, dashboards and internal tools</li><li>Analytics, forms and a clean admin where needed</li><li>Hosting, domain, HTTPS and deployment handled</li></ul>
   </div>
   <aside class="sv-side">
     <div class="sv-tile" aria-hidden="true"><svg class="ico big" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18M6.5 6.5h.01M9.5 6.5h.01M7 13h6M7 16h10"/></svg></div>
     <dl class="sv-facts">
-      <div><dt>Typical turnaround</dt><dd>1–2 weeks</dd></div>
+      <div><dt>Typical turnaround</dt><dd>1–4 weeks</dd></div>
       <div><dt>From</dt><dd class="sv-price"><span class="price-val metal-text" data-usd="350">$350</span></dd></div>
     </dl>
     <a class="btn btn-metal magnetic" href="mailto:nexusbuild@mail.grokbot.com?subject=Website%20project"><span class="lbl">Ask about this</span><span class="arrow" aria-hidden="true">→</span></a>
   </aside>
 </article>
-<article class="sv-panel" role="tabpanel" id="panel-apps" aria-labelledby="tab-apps" data-i="5" hidden>
+<article class="sv-panel" role="tabpanel" id="panel-seo" aria-labelledby="tab-seo" data-i="4" hidden>
   <div class="sv-main">
-    <p class="sv-count"><span>06</span> / 07</p>
-    <h3 class="sv-name">Web apps &amp; custom dashboards</h3>
-    <p class="sv-outcome">Internal tools and dashboards your team can run the business on.</p>
-    <ul class="sv-inc"><li>Sign-in, roles and a clean admin UI</li><li>Charts, tables, search and exports</li><li>Database and API, built to grow</li><li>Deployed, documented and handed over</li></ul>
+    <p class="sv-count"><span>05</span> / 09</p>
+    <h3 class="sv-name">SEO audit &amp; content</h3>
+    <p class="sv-outcome">More of the right people finding you on Google and in AI search.</p>
+    <ul class="sv-inc"><li>Technical and on-page SEO audit</li><li>Fixes to titles, speed, schema and structure</li><li>Keyword plan for your services or products</li><li>Two search-ready blog articles to start</li></ul>
   </div>
   <aside class="sv-side">
-    <div class="sv-tile" aria-hidden="true"><svg class="ico big" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7.5" height="9" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="5" rx="1.6"/><rect x="13.5" y="11" width="7.5" height="10" rx="1.6"/><rect x="3" y="15" width="7.5" height="6" rx="1.6"/></svg></div>
+    <div class="sv-tile" aria-hidden="true"><svg class="ico big" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/><path d="m7.6 12.4 2-2 1.6 1.5 2.3-2.9"/></svg></div>
     <dl class="sv-facts">
-      <div><dt>Typical turnaround</dt><dd>2–4 weeks</dd></div>
-      <div><dt>From</dt><dd class="sv-price"><span class="price-val metal-text" data-usd="800">$800</span></dd></div>
+      <div><dt>Typical turnaround</dt><dd>5–7 days</dd></div>
+      <div><dt>From</dt><dd class="sv-price"><span class="price-val metal-text" data-usd="150">$150</span></dd></div>
     </dl>
-    <a class="btn btn-metal magnetic" href="mailto:nexusbuild@mail.grokbot.com?subject=Web%20app%20project"><span class="lbl">Ask about this</span><span class="arrow" aria-hidden="true">→</span></a>
+    <a class="btn btn-metal magnetic" href="mailto:nexusbuild@mail.grokbot.com?subject=SEO%20project"><span class="lbl">Ask about this</span><span class="arrow" aria-hidden="true">→</span></a>
   </aside>
 </article>
-<article class="sv-panel" role="tabpanel" id="panel-ops" aria-labelledby="tab-ops" data-i="6" hidden>
+<article class="sv-panel" role="tabpanel" id="panel-shop" aria-labelledby="tab-shop" data-i="5" hidden>
   <div class="sv-main">
-    <p class="sv-count"><span>07</span> / 07</p>
-    <h3 class="sv-name">Deployment &amp; DevOps</h3>
-    <p class="sv-outcome">Your project online, monitored and staying up after launch.</p>
-    <ul class="sv-inc"><li>VPS or cloud setup and hardening</li><li>Docker, systemd and HTTPS</li><li>CI/CD from your repository</li><li>Uptime checks, logs and backups</li></ul>
+    <p class="sv-count"><span>06</span> / 09</p>
+    <h3 class="sv-name">Shopify store setup</h3>
+    <p class="sv-outcome">A clean store that is ready to take orders, not just a theme install.</p>
+    <ul class="sv-inc"><li>Theme setup and brand styling</li><li>Up to 20 products, collections and navigation</li><li>Payments, shipping, taxes and policies</li><li>Apps for reviews, email capture and upsells</li></ul>
   </div>
   <aside class="sv-side">
-    <div class="sv-tile" aria-hidden="true"><svg class="ico big" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01M11 7.5h6M11 16.5h6"/></svg></div>
+    <div class="sv-tile" aria-hidden="true"><svg class="ico big" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1.1 11.2a2 2 0 0 1-2 1.8H8.1a2 2 0 0 1-2-1.8Z"/><path d="M9 10V7a3 3 0 0 1 6 0v3"/></svg></div>
     <dl class="sv-facts">
-      <div><dt>Typical turnaround</dt><dd>1–3 days</dd></div>
-      <div><dt>From</dt><dd class="sv-price"><span class="price-val metal-text" data-usd="120">$120</span></dd></div>
+      <div><dt>Typical turnaround</dt><dd>5–10 days</dd></div>
+      <div><dt>From</dt><dd class="sv-price"><span class="price-val metal-text" data-usd="300">$300</span></dd></div>
     </dl>
-    <a class="btn btn-metal magnetic" href="mailto:nexusbuild@mail.grokbot.com?subject=Deployment%20project"><span class="lbl">Ask about this</span><span class="arrow" aria-hidden="true">→</span></a>
+    <a class="btn btn-metal magnetic" href="mailto:nexusbuild@mail.grokbot.com?subject=Shopify%20store%20project"><span class="lbl">Ask about this</span><span class="arrow" aria-hidden="true">→</span></a>
+  </aside>
+</article>
+<article class="sv-panel" role="tabpanel" id="panel-brand" aria-labelledby="tab-brand" data-i="6" hidden>
+  <div class="sv-main">
+    <p class="sv-count"><span>07</span> / 09</p>
+    <h3 class="sv-name">Logo &amp; brand kit</h3>
+    <p class="sv-outcome">A simple, confident identity you can use everywhere.</p>
+    <ul class="sv-inc"><li>Three logo concepts, refined into one</li><li>Colour palette and type pairing</li><li>Social profile and favicon set</li><li>One-page brand guide with all source files</li></ul>
+  </div>
+  <aside class="sv-side">
+    <div class="sv-tile" aria-hidden="true"><svg class="ico big" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 18 10l-6 10.5L6 10Z"/><circle cx="12" cy="10.5" r="1.6"/><path d="M12 12.1v8.4"/></svg></div>
+    <dl class="sv-facts">
+      <div><dt>Typical turnaround</dt><dd>3–5 days</dd></div>
+      <div><dt>From</dt><dd class="sv-price"><span class="price-val metal-text" data-usd="150">$150</span></dd></div>
+    </dl>
+    <a class="btn btn-metal magnetic" href="mailto:nexusbuild@mail.grokbot.com?subject=Brand%20kit%20project"><span class="lbl">Ask about this</span><span class="arrow" aria-hidden="true">→</span></a>
+  </aside>
+</article>
+<article class="sv-panel" role="tabpanel" id="panel-email" aria-labelledby="tab-email" data-i="7" hidden>
+  <div class="sv-main">
+    <p class="sv-count"><span>08</span> / 09</p>
+    <h3 class="sv-name">Email marketing setup</h3>
+    <p class="sv-outcome">Automated emails that welcome, follow up and win back customers.</p>
+    <ul class="sv-inc"><li>Klaviyo or Mailchimp account setup</li><li>Welcome, abandoned-cart and win-back flows</li><li>Branded templates that work on mobile</li><li>Sign-up form, list clean-up and tracking</li></ul>
+  </div>
+  <aside class="sv-side">
+    <div class="sv-tile" aria-hidden="true"><svg class="ico big" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/></svg></div>
+    <dl class="sv-facts">
+      <div><dt>Typical turnaround</dt><dd>3–5 days</dd></div>
+      <div><dt>From</dt><dd class="sv-price"><span class="price-val metal-text" data-usd="180">$180</span></dd></div>
+    </dl>
+    <a class="btn btn-metal magnetic" href="mailto:nexusbuild@mail.grokbot.com?subject=Email%20marketing%20project"><span class="lbl">Ask about this</span><span class="arrow" aria-hidden="true">→</span></a>
+  </aside>
+</article>
+<article class="sv-panel" role="tabpanel" id="panel-auto" aria-labelledby="tab-auto" data-i="8" hidden>
+  <div class="sv-main">
+    <p class="sv-count"><span>09</span> / 09</p>
+    <h3 class="sv-name">Automation, bots &amp; data</h3>
+    <p class="sv-outcome">Hours of copy-paste replaced by workflows, bots and data that run themselves.</p>
+    <ul class="sv-inc"><li>Zapier, Make or n8n workflows and API integrations</li><li>Telegram or Discord bots with admin controls</li><li>Scrapers and data pipelines to Sheets or a database</li><li>Error alerts, logs and a one-page runbook</li></ul>
+  </div>
+  <aside class="sv-side">
+    <div class="sv-tile" aria-hidden="true"><svg class="ico big" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7 6h10M6.2 7.7l4.6 8.6M17.8 7.7l-4.6 8.6"/></svg></div>
+    <dl class="sv-facts">
+      <div><dt>Typical turnaround</dt><dd>3–10 days</dd></div>
+      <div><dt>From</dt><dd class="sv-price"><span class="price-val metal-text" data-usd="150">$150</span></dd></div>
+    </dl>
+    <a class="btn btn-metal magnetic" href="mailto:nexusbuild@mail.grokbot.com?subject=Automation%20project"><span class="lbl">Ask about this</span><span class="arrow" aria-hidden="true">→</span></a>
   </aside>
 </article>
       </div>
@@ -248,40 +282,50 @@
   <span class="gl-name">AI assistants &amp; LLM integrations</span>
   <span class="gl-meta"><span class="gl-from">from <b class="price-val" data-usd="450">$450</b></span><span class="gl-time">1–2 weeks</span></span>
 </button>
-<button class="gl-card glass sheen fx-frame" data-go="1" aria-label="Workflow automation &amp; integrations, from $200, typically 3–7 days. Show details">
-  <span class="gl-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7 6h10M6.2 7.7l4.6 8.6M17.8 7.7l-4.6 8.6"/></svg></span>
-  <span class="gl-name">Workflow automation &amp; integrations</span>
-  <span class="gl-meta"><span class="gl-from">from <b class="price-val" data-usd="200">$200</b></span><span class="gl-time">3–7 days</span></span>
+<button class="gl-card glass sheen fx-frame" data-go="1" aria-label="Short-form video editing, from $90, typically 2–4 days. Show details">
+  <span class="gl-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m10 9.2 4.6 2.8-4.6 2.8Z"/></svg></span>
+  <span class="gl-name">Short-form video editing</span>
+  <span class="gl-meta"><span class="gl-from">from <b class="price-val" data-usd="90">$90</b></span><span class="gl-time">2–4 days</span></span>
 </button>
-<button class="gl-card glass sheen fx-frame" data-go="2" aria-label="Telegram &amp; Discord bots, from $200, typically 5–10 days. Show details">
-  <span class="gl-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4 3 11l6 2 2 6 3-4 4 3 3-14Z"/><path d="m9 13 7-5"/></svg></span>
-  <span class="gl-name">Telegram &amp; Discord bots</span>
-  <span class="gl-meta"><span class="gl-from">from <b class="price-val" data-usd="200">$200</b></span><span class="gl-time">5–10 days</span></span>
+<button class="gl-card glass sheen fx-frame" data-go="2" aria-label="Social media content &amp; management, from $250 per month, typically monthly. Show details">
+  <span class="gl-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.8"/><path d="M16.8 7.2h.01"/></svg></span>
+  <span class="gl-name">Social media content &amp; management</span>
+  <span class="gl-meta"><span class="gl-from">from <b class="price-val" data-usd="250">$250</b> / mo</span><span class="gl-time">ongoing</span></span>
 </button>
-<button class="gl-card glass sheen fx-frame" data-go="3" aria-label="Web scraping &amp; data pipelines, from $150, typically 3–7 days. Show details">
-  <span class="gl-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 10h16M4 15h9M4 20h6"/><path d="m16 15 4 2.5-4 2.5Z"/></svg></span>
-  <span class="gl-name">Web scraping &amp; data pipelines</span>
-  <span class="gl-meta"><span class="gl-from">from <b class="price-val" data-usd="150">$150</b></span><span class="gl-time">3–7 days</span></span>
-</button>
-<button class="gl-card glass sheen fx-frame" data-go="4" aria-label="Websites &amp; landing pages, from $350, typically 1–2 weeks. Show details">
+<button class="gl-card glass sheen fx-frame" data-go="3" aria-label="Websites, landing pages &amp; web apps, from $350, typically 1–4 weeks. Show details">
   <span class="gl-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18M6.5 6.5h.01M9.5 6.5h.01M7 13h6M7 16h10"/></svg></span>
-  <span class="gl-name">Websites &amp; landing pages</span>
-  <span class="gl-meta"><span class="gl-from">from <b class="price-val" data-usd="350">$350</b></span><span class="gl-time">1–2 weeks</span></span>
+  <span class="gl-name">Websites, landing pages &amp; web apps</span>
+  <span class="gl-meta"><span class="gl-from">from <b class="price-val" data-usd="350">$350</b></span><span class="gl-time">1–4 weeks</span></span>
 </button>
-<button class="gl-card glass sheen fx-frame" data-go="5" aria-label="Web apps &amp; custom dashboards, from $800, typically 2–4 weeks. Show details">
-  <span class="gl-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7.5" height="9" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="5" rx="1.6"/><rect x="13.5" y="11" width="7.5" height="10" rx="1.6"/><rect x="3" y="15" width="7.5" height="6" rx="1.6"/></svg></span>
-  <span class="gl-name">Web apps &amp; custom dashboards</span>
-  <span class="gl-meta"><span class="gl-from">from <b class="price-val" data-usd="800">$800</b></span><span class="gl-time">2–4 weeks</span></span>
+<button class="gl-card glass sheen fx-frame" data-go="4" aria-label="SEO audit &amp; content, from $150, typically 5–7 days. Show details">
+  <span class="gl-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/><path d="m7.6 12.4 2-2 1.6 1.5 2.3-2.9"/></svg></span>
+  <span class="gl-name">SEO audit &amp; content</span>
+  <span class="gl-meta"><span class="gl-from">from <b class="price-val" data-usd="150">$150</b></span><span class="gl-time">5–7 days</span></span>
 </button>
-<button class="gl-card glass sheen fx-frame" data-go="6" aria-label="Deployment &amp; DevOps, from $120, typically 1–3 days. Show details">
-  <span class="gl-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01M11 7.5h6M11 16.5h6"/></svg></span>
-  <span class="gl-name">Deployment &amp; DevOps</span>
-  <span class="gl-meta"><span class="gl-from">from <b class="price-val" data-usd="120">$120</b></span><span class="gl-time">1–3 days</span></span>
+<button class="gl-card glass sheen fx-frame" data-go="5" aria-label="Shopify store setup, from $300, typically 5–10 days. Show details">
+  <span class="gl-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1.1 11.2a2 2 0 0 1-2 1.8H8.1a2 2 0 0 1-2-1.8Z"/><path d="M9 10V7a3 3 0 0 1 6 0v3"/></svg></span>
+  <span class="gl-name">Shopify store setup</span>
+  <span class="gl-meta"><span class="gl-from">from <b class="price-val" data-usd="300">$300</b></span><span class="gl-time">5–10 days</span></span>
+</button>
+<button class="gl-card glass sheen fx-frame" data-go="6" aria-label="Logo &amp; brand kit, from $150, typically 3–5 days. Show details">
+  <span class="gl-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 18 10l-6 10.5L6 10Z"/><circle cx="12" cy="10.5" r="1.6"/><path d="M12 12.1v8.4"/></svg></span>
+  <span class="gl-name">Logo &amp; brand kit</span>
+  <span class="gl-meta"><span class="gl-from">from <b class="price-val" data-usd="150">$150</b></span><span class="gl-time">3–5 days</span></span>
+</button>
+<button class="gl-card glass sheen fx-frame" data-go="7" aria-label="Email marketing setup, from $180, typically 3–5 days. Show details">
+  <span class="gl-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/></svg></span>
+  <span class="gl-name">Email marketing setup</span>
+  <span class="gl-meta"><span class="gl-from">from <b class="price-val" data-usd="180">$180</b></span><span class="gl-time">3–5 days</span></span>
+</button>
+<button class="gl-card glass sheen fx-frame" data-go="8" aria-label="Automation, bots &amp; data, from $150, typically 3–10 days. Show details">
+  <span class="gl-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7 6h10M6.2 7.7l4.6 8.6M17.8 7.7l-4.6 8.6"/></svg></span>
+  <span class="gl-name">Automation, bots &amp; data</span>
+  <span class="gl-meta"><span class="gl-from">from <b class="price-val" data-usd="150">$150</b></span><span class="gl-time">3–10 days</span></span>
 </button>
 <a class="gl-card glass sheen fx-frame gl-other" href="mailto:nexusbuild@mail.grokbot.com?subject=Project%20idea">
   <span class="gl-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span>
   <span class="gl-name">Something else?</span>
-  <span class="gl-note">Browser extensions, API work, read-only Web3 integrations. Tell us and we will say honestly if it is a fit.</span>
+  <span class="gl-note">Ads setup, blog content, browser extensions, API work. Tell us and we will say honestly if it is a fit.</span>
 </a>
     </div>
     <p class="fine reveal" id="cur-note">Prices are starting points in USD. Final quote after a short scope chat.</p>
@@ -380,7 +424,7 @@
       <li class="step reveal"><span class="step-n">01</span><h3>Scope chat</h3><p>A short call or message thread. You tell us the outcome you want; we ask the questions that matter.</p></li>
       <li class="step reveal"><span class="step-n">02</span><h3>Written quote</h3><p>Scope, price and a realistic timeline in writing, before any work starts.</p></li>
       <li class="step reveal"><span class="step-n">03</span><h3>Build in the open</h3><p>Small, working pieces and regular updates, so you see it running early.</p></li>
-      <li class="step reveal"><span class="step-n">04</span><h3>Hand over</h3><p>Source code, setup notes and a walkthrough, so it keeps running without us.</p></li>
+      <li class="step reveal"><span class="step-n">04</span><h3>Hand over</h3><p>Source files, code, setup notes and a walkthrough, so it keeps running without us.</p></li>
     </ol>
   </div>
 </section>
@@ -397,7 +441,7 @@
       <ul class="pp-list">
         <li class="reveal"><b>Quote first</b><span>Scope, price and timeline agreed before we begin.</span></li>
         <li class="reveal"><b>No silent extras</b><span>If the scope changes, we quote the change first.</span></li>
-        <li class="reveal"><b>Yours at handover</b><span>Source code, setup notes and a walkthrough.</span></li>
+        <li class="reveal"><b>Yours at handover</b><span>Source files and code, setup notes and a walkthrough.</span></li>
         <li class="reveal"><b>Set in USD</b><span>GBP and EUR figures on this page are approximate conversions.</span></li>
       </ul>
     </div>
@@ -416,10 +460,11 @@
         <div class="lg" data-lg="contact" role="radiogroup" aria-label="What do you need?">
           <span class="lg-lens" aria-hidden="true"></span>
 <button class="lg-opt" role="radio" aria-checked="true" tabindex="0" data-subj="AI assistant"><span>AI</span></button>
-<button class="lg-opt" role="radio" aria-checked="false" tabindex="-1" data-subj="Automation"><span>Automation</span></button>
-<button class="lg-opt" role="radio" aria-checked="false" tabindex="-1" data-subj="Bot"><span>Bot</span></button>
-<button class="lg-opt" role="radio" aria-checked="false" tabindex="-1" data-subj="Scraping"><span>Data</span></button>
+<button class="lg-opt" role="radio" aria-checked="false" tabindex="-1" data-subj="Video editing"><span>Video</span></button>
+<button class="lg-opt" role="radio" aria-checked="false" tabindex="-1" data-subj="Social media"><span>Social</span></button>
 <button class="lg-opt" role="radio" aria-checked="false" tabindex="-1" data-subj="Website"><span>Web</span></button>
+<button class="lg-opt" role="radio" aria-checked="false" tabindex="-1" data-subj="SEO"><span>SEO</span></button>
+<button class="lg-opt" role="radio" aria-checked="false" tabindex="-1" data-subj="Shopify store"><span>Shop</span></button>
 <button class="lg-opt" role="radio" aria-checked="false" tabindex="-1" data-subj="Something else"><span>Other</span></button>
         </div>
       </div>
@@ -433,15 +478,15 @@
 <footer class="footer">
   <div class="container foot">
     <span class="brand"><span class="brand-mark sm" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M8.45 24 8.45 8 13.35 8 21.45 20.71 21.45 8 23.55 8 23.55 24 18.65 24 10.55 11.29 10.55 24Z" fill="url(#g-mark)"/></svg></span><span class="brand-name">Nexus Build</span></span>
-    <p>AI assistants · Automation · Bots · Data · Web · DevOps</p>
+    <p>AI · Video · Social · Web · SEO · Shopify · Brand · Email · Automation</p>
     <p>© 2026 Nexus Build · <a href="mailto:nexusbuild@mail.grokbot.com">nexusbuild@mail.grokbot.com</a></p>
   </div>
 </footer>
 
-<script src="lenis.min.js" defer></script>
-<script src="main.js" defer></script>
-<script src="fx.js" defer></script>
-<script src="demos.js" defer></script>
-<script type="module" src="hero.js"></script>
+<script src="lenis.min.js?v=7" defer></script>
+<script src="main.js?v=7" defer></script>
+<script src="fx.js?v=7" defer></script>
+<script src="demos.js?v=7" defer></script>
+<script type="module" src="hero.js?v=7"></script>
 </body>
 </html>
