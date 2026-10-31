@@ -1,4 +1,4 @@
-/* Nexus Build v5 — one clock, one curve, one light, one rAF loop.
+/* Nexus Studio v8 — one clock, one curve, one light, one rAF loop.
    NX: shared timing (expo-out everywhere, cubic in-out for the light), a single
    global light band that travels top-left → bottom-right across the viewport,
    Lenis scroll, magnetic buttons, parallax and the liquid glass controls. */
@@ -7,7 +7,7 @@
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fine = matchMedia('(pointer:fine)').matches;
   if (reduce) root.classList.add('static');
-  setTimeout(() => { if (!window.__heroOK) root.classList.add('static'); }, 3500);
+  setTimeout(() => { if (!window.__heroOK) root.classList.add('static'); }, 6000);
 
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const DIR = [0.788, 0.616];                       // 128deg, the one light direction
@@ -55,11 +55,15 @@
   });
 
   /* ---------- reveals ---------- */
-  document.querySelectorAll('.steps, .pp-list').forEach(g => [...g.children].forEach((c, i) => c.style.setProperty('--d', (i * 0.12) + 's')));
+  // v8: one observer for every reveal. Each element gets .in exactly once (then it is unobserved), and the motion is a
+  // plain CSS transition on opacity + transform with a long expo-out tail, so nothing restarts or snaps at the end.
+  document.querySelectorAll('.steps, .pp-list, .why-grid, .faq-list, .start-steps').forEach(g => [...g.children].forEach((c, i) => c.style.setProperty('--d', (i * 0.09) + 's')));
+  NX.revealed = 0;
   const io = new IntersectionObserver(es => es.forEach(e => {
-    if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
-  }), { threshold: 0.15, rootMargin: '0px 0px -6% 0px' });
+    if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); NX.revealed++; }
+  }), { threshold: 0.12, rootMargin: '0px 0px -5% 0px' });
   document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+  NX.reveal = el => io.observe(el);
 
   /* ---------- layout cache: document-space boxes, refreshed only when layout changes ---------- */
   // Per-frame code never calls getBoundingClientRect on these; it uses cached boxes + the scroll offset.
@@ -73,7 +77,7 @@
     let c = boxCache.get(el);
     if (!c || c.g !== layoutGen) {
       const r = el.getBoundingClientRect(), fixed = !!el.closest('.nav-wrap');
-      c = { g: layoutGen, l: r.left + (fixed ? 0 : scrollX), t: r.top + (fixed ? 0 : scrollY), h: r.height, fixed };
+      c = { g: layoutGen, l: r.left + (fixed ? 0 : scrollX), t: r.top + (fixed ? 0 : scrollY), h: r.height, w: r.width, fixed };
       boxCache.set(el, c);
     }
     return c;
@@ -97,9 +101,13 @@
     }
     bandWasOn = true;
     const y = scrollY;
+    // v8: only elements the band is actually crossing get a new value (each write = a repaint of that element's rim)
     for (const el of sweepEls) {
       const b = docBox(el), top = b.fixed ? b.t : b.t - y;
-      el.style.setProperty('--band', Math.round(D - (b.l * DIR[0] + top * DIR[1])) + 'px');
+      const v = Math.round(D - (b.l * DIR[0] + top * DIR[1])), ext = b.w * DIR[0] + b.h * DIR[1];
+      const out = v < -260 || v > ext + 260;
+      if (out) { if (el.__bo !== 1) { el.__bo = 1; el.style.setProperty('--band', '-9999px'); } continue; }
+      el.__bo = 0; el.style.setProperty('--band', v + 'px');
     }
   }
 
@@ -129,14 +137,53 @@
   /* ---------- parallax ---------- */
   const deps = reduce ? [] : [...document.querySelectorAll('[data-depth]')].map(el => ({ el, d: +el.dataset.depth }));
 
-  /* ---------- glass cursor light ---------- */
-  if (fine && !reduce) document.querySelectorAll('.glass').forEach(el => {
-    el.addEventListener('pointermove', e => { const r = el.getBoundingClientRect(); el.style.setProperty('--mx', (e.clientX - r.left) + 'px'); el.style.setProperty('--my', (e.clientY - r.top) + 'px'); });
-    el.addEventListener('pointerleave', () => { el.style.removeProperty('--mx'); el.style.removeProperty('--my'); });
+  /* ---------- one shared hover light for the card grids ---------- */
+  // v8: replaces the per-card cursor gradient (a repaint per pointermove per card, restarting on every card).
+  // A single plate springs between cards: critically damped, transform + opacity only, boxes read on enter only.
+  const hovers = [];
+  if (fine && !reduce) document.querySelectorAll('.glance, .why-grid').forEach(grid => {
+    const hl = document.createElement('div'); hl.className = 'hl'; hl.setAttribute('aria-hidden', 'true');
+    hl.innerHTML = '<i class="hl-l"></i><i class="hl-m"></i><i class="hl-r"></i>';
+    grid.prepend(hl);
+    const [L, M, R] = hl.children;
+    const H = { grid, hl, L, M, R, on: false, x: 0, y: 0, w: 0, h: 0, o: 0, vx: 0, vy: 0, vw: 0, vh: 0, vo: 0, tx: 0, ty: 0, tw: 0, th: 0, to: 0, h0: 0, idle: true, leaveT: 0 };
+    const target = card => {
+      const g = grid.getBoundingClientRect(), r = card.getBoundingClientRect();
+      H.tx = r.left - g.left; H.ty = r.top - g.top; H.tw = r.width; H.th = r.height; H.to = 1;
+      if (!H.h0) { H.h0 = r.height; H.hl.style.height = r.height + 'px'; }
+      if (H.o < .02) { H.x = H.tx; H.y = H.ty; H.w = H.tw; H.h = H.th; H.vx = H.vy = H.vw = H.vh = 0; }   // first entry: appear in place
+      H.idle = false; clearTimeout(H.leaveT);
+    };
+    grid.addEventListener('pointerover', e => { const c = e.target.closest('.gl-card, .why-item'); if (c && grid.contains(c)) target(c); });
+    grid.addEventListener('pointerleave', () => { H.leaveT = setTimeout(() => { H.to = 0; H.idle = false; }, 60); });
+    grid.addEventListener('focusin', e => { const c = e.target.closest('.gl-card, .why-item'); if (c) target(c); });
+    grid.addEventListener('focusout', () => { H.to = 0; H.idle = false; });
+    hovers.push(H);
   });
+  const W0 = 22;                                  // cap width = card radius
+  function springHover(dt) {
+    for (const H of hovers) {
+      if (H.idle) continue;
+      const w = 15, k = w * w, c = 2 * w;           // ω=15 rad/s, ζ=1: no overshoot, ~0.3s to settle
+      const sub = Math.max(1, Math.ceil(dt * 120)), h = dt / sub;      // fixed 120Hz sub-steps: same feel at any frame rate
+      const st = (p, v, t) => { const a = k * (t - H[p]) - c * H[v]; H[v] += a * h; H[p] += H[v] * h; };
+      for (let i = 0; i < sub; i++) { st('x', 'vx', H.tx); st('y', 'vy', H.ty); st('w', 'vw', H.tw); st('h', 'vh', H.th); }
+      H.o += (H.to - H.o) * (1 - Math.exp(-dt * (H.to ? 14 : 7)));
+      const sy = H.h / (H.h0 || H.h || 1), mid = Math.max(0, H.w - 2 * W0);
+      H.hl.style.opacity = H.o.toFixed(3);
+      H.hl.style.transform = `translate3d(${H.x.toFixed(2)}px,${H.y.toFixed(2)}px,0) scaleY(${sy.toFixed(4)})`;
+      H.M.style.transform = `translate3d(${W0}px,0,0) scaleX(${mid.toFixed(2)})`;
+      H.R.style.transform = `translate3d(${(W0 + mid).toFixed(2)}px,0,0)`;
+      const still = Math.abs(H.tx - H.x) + Math.abs(H.ty - H.y) + Math.abs(H.tw - H.w) + Math.abs(H.th - H.h) < .05 && Math.abs(H.to - H.o) < .002;
+      if (still) H.idle = true;
+    }
+  }
+  NX.hovers = hovers;
 
   /* ---------- the frame loop ---------- */
   const steps = document.querySelector('.steps');
+  const grain = document.querySelector('.grain'), stageEl0 = document.querySelector('.stage');
+  const GRAIN = .085, G_HERO = 1.3, G_REST = .75;  // the locked 'New' look: noise7 tile, .085, 200px
   let last = performance.now();
   let visible = !document.hidden;
   document.addEventListener('visibilitychange', () => { visible = !document.hidden; if (visible) { last = performance.now(); requestAnimationFrame(frame); } });
@@ -168,6 +215,13 @@
       if (top + b.h < -200 || top > vh + 200) continue;
       const v = ((top + b.h / 2 - vh / 2) * -p.d).toFixed(1);
       if (v !== p.v) { p.v = v; p.el.style.setProperty('--py', v + 'px'); }
+    }
+    springHover(dt);
+    if (grain && stageEl0) {                        // grain: heavier over the hero, lighter below (built in; no UI)
+      const b = docBox(stageEl0), bottom = b.t + b.h - y;
+      let u = clamp((bottom - vh * .15) / vh, 0, 1); u = u * u * (3 - 2 * u);
+      const v = (GRAIN * (G_REST + (G_HERO - G_REST) * u)).toFixed(4);
+      if (v !== grain._v) { grain._v = v; grain.style.opacity = v; }
     }
     if (steps && !reduce) {
       const top = docBox(steps).t - y, v = clamp((vh * .82 - top) / (vh * .5), 0, 1).toFixed(3);
@@ -510,61 +564,3 @@
   addEventListener('keydown', e => { if (e.key === 'Escape' && !menu.hidden) { setMenu(false); btn.focus(); } });
 })();
 
-/* ==== GRAIN_TUNER (temporary preview control) =============================================
-   Bottom-left pill: [Grain: <look>] cycles Previous / New / Soft / Strong; [Uniform | Per-section]
-   toggles hero-heavy, rest-light grain. To remove: set GRAIN_TUNER = false (or delete this block
-   and the GRAIN_TUNER block at the end of style.css). Without it the site uses the "New" look. */
-const GRAIN_TUNER = true;
-(function grainTuner() {
-  if (!GRAIN_TUNER) return;
-  const grain = document.querySelector('.grain'); if (!grain) return;
-  const LOOKS = [   // img: CSS var holding the noise tile; op: base opacity; size: tile size
-    { id: 'previous', name: 'Previous', img: 'var(--noise)',  op: .022, size: '180px' },   // v4/v5 exactly
-    { id: 'new',      name: 'New',      img: 'var(--noise7)', op: .085, size: '200px' },   // v7 default: silver-blue, clearly visible
-    { id: 'soft',     name: 'Soft',     img: 'var(--noise7)', op: .06,  size: '200px' },
-    { id: 'strong',   name: 'Strong',   img: 'var(--noise7)', op: .12,  size: '220px' }
-  ];
-  const HERO = 1.3, REST = .75;    // per-section multipliers on the look's opacity
-  const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
-  let li = Math.max(0, LOOKS.findIndex(l => l.id === store.get('nb7-grain-look'))); if (!store.get('nb7-grain-look')) li = 1;
-  let per = store.get('nb7-grain-sec') === '1';
-
-  const ui = document.createElement('div');
-  ui.className = 'gt'; ui.setAttribute('role', 'group'); ui.setAttribute('aria-label', 'Grain preview');
-  ui.innerHTML = '<button type="button" class="gt-look" aria-live="polite"></button><button type="button" class="gt-sec" aria-pressed="false"></button>';
-  const bLook = ui.children[0], bSec = ui.children[1];
-  document.body.appendChild(ui);
-
-  function apply() {
-    const L = LOOKS[li], s = grain.style;
-    s.setProperty('--grain-img', L.img); s.setProperty('--grain-op', L.op); s.setProperty('--grain-size', L.size);
-    bLook.innerHTML = 'Grain: <b>' + L.name + '</b>';
-    bLook.setAttribute('aria-label', 'Grain look: ' + L.name + '. Activate for the next look.');
-    bSec.textContent = per ? 'Per-section' : 'Uniform';
-    bSec.setAttribute('aria-pressed', String(per));
-    bSec.setAttribute('aria-label', 'Grain intensity: ' + (per ? 'per section, heavier on the hero' : 'uniform') + '. Activate to switch.');
-    if (!per) { s.removeProperty('--grain-sec'); last = -1; } else { hook(); update(); }
-  }
-  // per-section: 1 while the hero stage fills the screen, easing to REST over one viewport as it leaves
-  const stage = document.querySelector('.stage');
-  let last = -1, queued = false;
-  function update() {
-    queued = false; if (!per || !stage) return;
-    const b = stage.getBoundingClientRect().bottom, h = innerHeight || 1;
-    let t = Math.min(1, Math.max(0, (b - h * .15) / h)); t = t * t * (3 - 2 * t);
-    const v = Math.round((REST + (HERO - REST) * t) * 100) / 100;
-    if (v !== last) { last = v; grain.style.setProperty('--grain-sec', v); }
-  }
-  let tail = 0;
-  const onScroll = () => { if (!per) return; if (!queued) { queued = true; requestAnimationFrame(update); } clearTimeout(tail); tail = setTimeout(() => requestAnimationFrame(update), 160); };   // trailing check after the scroll settles
-  addEventListener('scroll', onScroll, { passive: true });
-  addEventListener('resize', onScroll, { passive: true });
-  let hooked = false; const hook = () => { if (!hooked && window.NX && NX.lenis && NX.lenis.on) { hooked = true; NX.lenis.on('scroll', onScroll); } };
-  bLook.addEventListener('click', () => { li = (li + 1) % LOOKS.length; store.set('nb7-grain-look', LOOKS[li].id); apply(); });
-  bSec.addEventListener('click', () => { per = !per; store.set('nb7-grain-sec', per ? '1' : '0'); apply(); });
-  // keep taps on the pill from reaching any page drag handlers
-  ui.addEventListener('pointerdown', e => e.stopPropagation());
-  apply();
-  window.__grainTuner = { get look() { return LOOKS[li].id; }, get per() { return per; }, get sec() { return getComputedStyle(grain).getPropertyValue('--grain-sec') || '1'; } };
-})();
-/* ==== /GRAIN_TUNER ==== */

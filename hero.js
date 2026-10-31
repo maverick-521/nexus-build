@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-/* Nexus Build v7 hero (midnight sapphire re-tint of the v6 N): grains converge into a solid black-chrome "N" (thin stems, heavy diagonal) with platinum chamfers.
+/* Nexus Studio v8 hero (midnight sapphire N; v8: shaders pre-compiled + warmed before the clock starts, grains shed by a soft fade instead of a hard cut, no DPR change at runtime, slower graceful exit): grains converge into a solid black-chrome "N" (thin stems, heavy diagonal) with platinum chamfers.
    One clock (NX), one light band, one curve. The mesh and the grains share the same group and the
    same unit space, so the grains land exactly on the jewel's silhouette and then dissolve into it. */
 const root = document.documentElement;
@@ -22,8 +22,9 @@ function start() {
   canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); goStatic(); }, false);
 
   const mobile = innerWidth < 760 || matchMedia('(pointer:coarse)').matches;
-  const COUNT = mobile ? 18000 : 46000;
-  const DPR_MAX = Math.min(devicePixelRatio || 1, mobile ? 1.5 : 1.75);
+  const COUNT = mobile ? 16000 : 40000;
+  // v8: DPR is decided once (1.5 cap) and never changed while the N is on screen: a resize mid-assembly was one of the 'flick' sources
+  const DPR_MAX = Math.min(devicePixelRatio || 1, 1.5);
   let dpr = DPR_MAX;
   renderer.setPixelRatio(dpr);
   renderer.setClearColor(0x000000, 0);
@@ -70,7 +71,7 @@ function start() {
   const U = {
     uTime: { value: 0 }, uForm: { value: 0 }, uBlow: { value: 0 }, uSolid: { value: 0 },
     uSweep: { value: -9 }, uLight: { value: new THREE.Vector2(-0.3, 0.35) },
-    uSize: { value: mobile ? 2.8 : 2.4 }, uDpr: { value: dpr }
+    uSize: { value: mobile ? 2.9 : 2.5 }, uDpr: { value: dpr }, uKeep: { value: 1.001 }
   };
   // shared dissolve + inner glow + light band, injected into the physical material
   function jewelize(mat, kind) {
@@ -136,7 +137,7 @@ function start() {
   const area = NP.reduce((s, p, i) => { const q = NP[(i + 1) % NP.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0);
   const sgn = area > 0 ? 1 : -1;
 
-  const aT = new Float32Array(COUNT * 3), aC = new Float32Array(COUNT * 3), aS = new Float32Array(COUNT * 4), aK = new Float32Array(COUNT);
+  const aT = new Float32Array(COUNT * 3), aC = new Float32Array(COUNT * 3), aS = new Float32Array(COUNT * 4), aK = new Float32Array(COUNT), aR = new Float32Array(COUNT);
   for (let i = 0; i < COUNT; i++) {
     const r = Math.random();
     let tx, ty, tz, cls;
@@ -160,12 +161,14 @@ function start() {
     // silver-blue grains with a share of ice-sapphire: a few on the face and edges, rare pale sparks
     const pe = cls === 0 ? .16 : .12;
     aK[i] = Math.random() < pe ? (Math.random() < .06 ? 1.0 : .7) : 0;
+    aR[i] = i / COUNT;                       // rank: adaptive quality fades out the top ranks, never cuts them
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(aT, 3));
   geo.setAttribute('aChaos', new THREE.BufferAttribute(aC, 3));
   geo.setAttribute('aSeed', new THREE.BufferAttribute(aS, 4));
   geo.setAttribute('aEm', new THREE.BufferAttribute(aK, 1));
+  geo.setAttribute('aRank', new THREE.BufferAttribute(aR, 1));
   let drawN = COUNT; geo.setDrawRange(0, drawN);
 
   const NOISE = `
@@ -202,8 +205,8 @@ function start() {
   const mat = new THREE.ShaderMaterial({
     uniforms: U, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
     vertexShader: NOISE + `
-      attribute vec3 aChaos; attribute vec4 aSeed; attribute float aEm;
-      uniform float uTime,uForm,uBlow,uSolid,uSweep,uSize,uDpr; uniform vec2 uLight;
+      attribute vec3 aChaos; attribute vec4 aSeed; attribute float aEm; attribute float aRank;
+      uniform float uTime,uForm,uBlow,uSolid,uSweep,uSize,uDpr,uKeep; uniform vec2 uLight;
       varying vec3 vCol; varying float vA; varying float vSpec;
       void main(){
         float f=clamp((uForm*1.75-aSeed.x)/1.0,0.0,1.0);
@@ -231,7 +234,7 @@ function start() {
         vec3 plat=mix(vec3(0.84,0.89,0.97),vec3(0.93,0.95,1.00),aSeed.w);
         vec3 jade=mix(vec3(0.52,0.68,0.92),vec3(0.78,0.88,1.00),step(0.95,aEm));
         vCol=mix(plat,jade,step(0.5,aEm))*k;
-        vA=(1.0-smoothstep(0.55,1.0,b))*smoothstep(0.0,0.08,uForm+0.02)/(dof*dof);
+        vA=(1.0-smoothstep(0.55,1.0,b))*smoothstep(0.0,0.08,uForm+0.02)/(dof*dof)*(1.0-smoothstep(uKeep-0.06,uKeep,aRank));
         vSpec=band*(0.4+glint*2.0)*mix(1.0,0.25,settle);
       }`,
     fragmentShader: `
@@ -262,9 +265,10 @@ function start() {
     emPx = mobile || W < 760 ? Math.min(W * 0.66, H * 0.4) : Math.min(H * 0.56, W * 0.38, 540);
     const s = emPx / H * 2 * Z0 * tanH;
     jewel.scale.setScalar(s); scaleInv.value = 1 / s;
-    setVar('--em', emPx.toFixed(1) + 'px');
+    setVar('--emsz', emPx.toFixed(1) + 'px');
   }
   const last = {};
+  const setTf = (el, v) => { if (el.__tf !== v) { el.__tf = v; el.style.transform = v; } };
   function setVar(k, v) { if (last[k] !== v) { last[k] = v; sticky.style.setProperty(k, v); } }
   resize(); addEventListener('resize', resize, { passive: true });
 
@@ -274,6 +278,11 @@ function start() {
 
   const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   const easeIO = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  // v8: compile every program and upload the environment map before the clock starts. Before, the jewel's physical
+  // shader compiled the first time it became visible (~3s in, mid-assembly): a long frame, then a jump = the "flick".
+  gem.visible = true; U.uForm.value = 0; U.uSolid.value = 0;
+  try { renderer.compile(scene, camera); } catch (e) {}
+  renderer.render(scene, camera);
   NX.restart();
 
   // pause completely when the stage is off screen
@@ -281,19 +290,27 @@ function start() {
   new IntersectionObserver(es => { inView = es[0].isIntersecting; }, { rootMargin: '80px' }).observe(stage);
 
   // adaptive quality: watch real frame time, shed grains first, then resolution
-  let ema = 1 / 60, slow = 0, fast = 0, frames = 0;
+  // v8: shedding grains is a 0.8s fade over a slice of random ranks (no single-frame pop); resolution never changes at runtime
+  let ema = 1 / 60, slow = 0, fast = 0, frames = 0, keep = 1.001, keepT = 1.001;
   function adapt(dt) {
-    frames++; if (frames < 40) return;                  // ignore warm-up
-    ema += (dt - ema) * 0.05;
-    if (ema > 1 / 50) { slow += dt; fast = 0; } else if (ema < 1 / 57) { fast += dt; slow = 0; } else { slow = fast = 0; }
-    if (slow > 0.6) {
-      slow = 0;
-      if (drawN > COUNT * .4) { drawN = Math.round(drawN * .8); geo.setDrawRange(0, drawN); }
-      else if (dpr > 1) { dpr = Math.max(1, dpr - .25); renderer.setPixelRatio(dpr); U.uDpr.value = dpr; renderer.setSize(W, H, false); }
-    } else if (fast > 4 && drawN < COUNT) { fast = 0; drawN = Math.min(COUNT, Math.round(drawN * 1.1)); geo.setDrawRange(0, drawN); }
+    frames++;
+    if (frames >= 40) {                                 // ignore warm-up
+      ema += (dt - ema) * 0.05;
+      if (ema > 1 / 50) { slow += dt; fast = 0; } else if (ema < 1 / 57) { fast += dt; slow = 0; } else { slow = fast = 0; }
+      if (slow > 0.6) { slow = 0; keepT = Math.max(.45, keepT - .15); }
+      else if (fast > 4 && keepT < 1) { fast = 0; keepT = Math.min(1.001, keepT + .1); }
+    }
+    if (keep !== keepT) {
+      const st = dt / 0.8 * .15;                       // .15 of the grains per 0.8s
+      keep = keep < keepT ? Math.min(keepT, keep + st) : Math.max(keepT, keep - st);
+      U.uKeep.value = keep;
+      const n = Math.min(COUNT, Math.ceil((keep + .002) * COUNT));
+      if (n !== drawN) { drawN = n; geo.setDrawRange(0, drawN); }
+    }
   }
-  window.__hero = { get count() { return drawN; }, get dpr() { return dpr; }, get ema() { return ema; } };
+  window.__hero = { get count() { return drawN; }, get dpr() { return dpr; }, get ema() { return ema; }, get keep() { return keep; }, frames: [] };
 
+  const sky = document.querySelector('.sky'), planet = document.querySelector('.planet');
   let r = null, pSm = 0;
   NX.read(() => { r = inView ? stage.getBoundingClientRect() : null; });
   NX.on((now, dt, t) => {
@@ -312,21 +329,27 @@ function start() {
     jewel.rotation.y = m.x * 0.16 + Math.sin(t * 0.21) * 0.10 * idle;
     jewel.rotation.x = m.y * 0.10 + Math.sin(t * 0.17 + 1.3) * 0.045 * idle;
 
+    // v8: the N leaves slowly, turning a little as it goes; the horizon sinks and the stars drift with the cursor
+    jewel.rotation.y += sm(0.0, 0.8, p) * 0.5;
+    jewel.position.y = sm(0.0, 0.8, p) * 0.06;
+    if (planet) setTf(planet, `translate3d(${(m.x * -10).toFixed(1)}px,${(p * 90 + m.y * -4).toFixed(1)}px,0)`);
+    if (sky) setTf(sky, `translate3d(${(m.x * -18).toFixed(1)}px,${(m.y * -12 - p * 60).toFixed(1)}px,0)`);
     const form = Math.min(1, Math.max(0, (t - 0.35) / 4.4));
     U.uTime.value = t; U.uForm.value = form;
     U.uSolid.value = sm(3.0, 5.4, t);
-    U.uBlow.value = sm(0.0, 0.55, p);
+    U.uBlow.value = sm(0.0, 0.8, p);                 // v8: was 0 → .55 of the pin; now 0 → .8, eased
     const D = NX.bandAt(t, W, innerHeight);
     const S = emPx * Z0 / z, Dc = (W / 2) * 0.788 + (r.top + H / 2 > 0 ? H / 2 : 0) * 0.616;
     U.uSweep.value = D == null ? -9 : (D - Dc) / S;
     U.uLight.value.set(m.x * 0.5 - 0.15, -m.y * 0.5 + 0.2);
-    gem.visible = U.uSolid.value > 0.001 && U.uBlow.value < 0.999;
+    gem.visible = U.uSolid.value > 0.001 && U.uBlow.value < 0.999;   // program + env map were warmed before t=0, so first use costs nothing
 
-    setVar('--solid', (sm(3.3, 5.6, t) * (1 - sm(0.03, 0.25, p))).toFixed(2));
-    setVar('--intro', (sm(4.8, 6.2, t) * (1 - sm(0.0, 0.1, p))).toFixed(3));
-    setVar('--hp', sm(0.18, 0.55, p).toFixed(3));
-    setVar('--hs', (sm(0.18, 0.85, p) * 1.3).toFixed(3));
-    setVar('--lp', sm(0.4, 0.7, p).toFixed(3));
+    setVar('--solid', (sm(3.3, 5.6, t) * (1 - sm(0.03, 0.5, p))).toFixed(3));
+    setVar('--intro', (sm(4.8, 6.2, t) * (1 - sm(0.0, 0.24, p))).toFixed(3));
+    setVar('--hp', sm(0.42, 0.76, p).toFixed(3));
+    setVar('--hs', (sm(0.42, 0.98, p) * 1.3).toFixed(3));
+    setVar('--lp', sm(0.58, 0.86, p).toFixed(3));
+    NX.heroP = p;
     renderer.render(scene, camera);
   });
 }
