@@ -538,7 +538,7 @@ button{font:inherit;color:inherit}
   .sky::before,.sky::after{opacity:.35}
 }
 
-/* ---------- v9: selected work (concept pieces for fictional brands) ---------- */
+/* ---------- v9: selected work (concept pieces) ---------- */
 .work-grid{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
 .wk-card{all:unset;box-sizing:border-box;position:relative;display:flex;flex-direction:column;padding:10px;border-radius:22px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .wk-card:focus-visible{outline:1.5px solid rgba(128,170,214,.8);outline-offset:4px}
@@ -628,7 +628,6 @@ button{font:inherit;color:inherit}
   .lb{padding:10px}
   .lb-panel{border-radius:22px}
   .lb-head{padding:14px 12px 12px 18px;gap:10px}
-  .lb-fb{display:none}
   .lb-sheet{border-radius:10px}
   .lb-note{font-size:12px;margin-top:12px}
   .lb-title{font-size:21px}

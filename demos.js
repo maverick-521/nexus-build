@@ -1,4 +1,4 @@
-/* Sample concepts. Fictional data, running on the shared clock and curve. */
+/* Sample concepts. Sample data, running on the shared clock and curve. */
 (() => {
   const NX = window.NX; if (!NX) return;
   const { expoOut, easeIO, clamp, reduce } = NX;
