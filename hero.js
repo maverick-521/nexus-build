@@ -1,5 +1,9 @@
 import * as THREE from 'three';
-/* v12g: the disc, its shade, the glow and the ring now share one plane (z=0) inside the same group, so they stay exactly concentric
+/* v12h: fix: the page-grain cut-out over the badge was only tied to the formation (uSolid) and cleared at uBlow>0.98, while the disc
+   is gone by uBlow~0.46, so through the whole headline phase a grain-free (darker) circle stayed on screen; it also stuck when the
+   loop stopped early (stage off screen) or on the static fallback. The cut-out now carries the disc's own left-to-right dissolve
+   (a wipe layer in the mask), is removed once the disc is gone, on early exits and in goStatic.
+   v12g: the disc, its shade, the glow and the ring now share one plane (z=0) inside the same group, so they stay exactly concentric
    at any tilt, parallax or DPR; the disc edge is an antialiased circle at the ring's centre line (the hairline covers it), its shading is
    concentric, and the offset page shadow is gone. The page-grain cut-out follows the canvas rect and sits just inside the ring, fading in
    with the disc. The face is one continuous polished-steel gradient (soft bands, no horizon step, no hot line); only the bevel stays crisp.
@@ -32,7 +36,7 @@ const sticky = document.querySelector('.stage-sticky');
 const canvas = document.getElementById('grains');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const NX = window.NX;
-function goStatic() { root.classList.add('static'); }
+function goStatic() { root.classList.add('static'); root.style.removeProperty('--gmask'); }   // v12h: never leave a grain cut-out behind
 
 if (reduce || !NX) goStatic(); else start();
 
@@ -465,18 +469,18 @@ function start() {
       if (n !== drawN) { drawN = n; geo.setDrawRange(0, drawN); }
     }
   }
-  window.__hero = { get count() { return drawN; }, get dpr() { return dpr; }, get ema() { return ema; }, get keep() { return keep; }, frames: [] };
+  window.__hero = { get blow() { return U.uBlow.value; }, get count() { return drawN; }, get dpr() { return dpr; }, get ema() { return ema; }, get keep() { return keep; }, frames: [] };
 
   const sky = document.querySelector('.sky'), planet = document.querySelector('.planet');
   let r = null, pSm = 0, bSm = 0;
   NX.read(() => { r = inView ? stage.getBoundingClientRect() : null; });
   NX.on((now, dt, t) => {
-    if (!r) return;
+    if (!r) { setRootVar('--gmask', 'none'); return; }   // v12h: off screen the page grain is always whole
     adapt(dt);
     const pScroll = Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - H)));
     pSm += (pScroll - pSm) * (1 - Math.exp(-dt * 7.5));
     const p = pSm;
-    if (r.bottom < -50) return;
+    if (r.bottom < -50) { setRootVar('--gmask', 'none'); return; }
 
     const km = 1 - Math.exp(-dt * 2.2); m.x += (m.tx - m.x) * km; m.y += (m.ty - m.y) * km;
     const z = Z0 + (Z1 - Z0) * easeIO(Math.min(1, t / 26)) - p * 0.6;
@@ -514,16 +518,28 @@ function start() {
     setVar('--lp', sm(0.58, 0.86, p).toFixed(3));
     NX.heroP = p;
     // v12f: keep the page grain off the badge: project its centre and ring, then cut a hole in the fixed grain overlay
-    if (U.uBlow.value < 0.98 && U.uSolid.value > 0.001) {
+    // v12h: the cut-out is exactly as opaque as the disc under it. The disc shows at a(x) = solid * (1 - smoothstep(-0.1, 0.25, blow*1.7 - (x+0.5)*0.55));
+    // the mask unions the radial hole (1 - solid inside) with a left-to-right wipe layer (1 - wipe(x)), so the grain returns in step with the
+    // disc's scroll dissolve and is whole again (no mask at all) once the disc has gone.
+    const blow = U.uBlow.value, solid = U.uSolid.value;
+    const discGone = blow * 1.7 - (RING + 0.006 + 0.5) * 0.55 >= 0.25;
+    if (solid > 0.001 && !discGone) {
       jewel.updateMatrixWorld(); camera.updateMatrixWorld();
-      const c0 = new THREE.Vector3(0, 0, 0).applyMatrix4(jewel.matrixWorld).project(camera);
-      const c1 = new THREE.Vector3(RING, 0, 0).applyMatrix4(jewel.matrixWorld).project(camera);
-      const c2 = new THREE.Vector3(0, RING, 0).applyMatrix4(jewel.matrixWorld).project(camera);
+      const P = (x, y) => new THREE.Vector3(x, y, 0).applyMatrix4(jewel.matrixWorld).project(camera);
       const cr = renderer.domElement.getBoundingClientRect();   // v12g: follow the canvas itself
-      const cx = cr.left + (c0.x + 1) * cr.width / 2, cy = cr.top + (1 - c0.y) * cr.height / 2;
-      const rad = Math.min(Math.hypot((c1.x - c0.x) * cr.width / 2, (c1.y - c0.y) * cr.height / 2), Math.hypot((c2.x - c0.x) * cr.width / 2, (c2.y - c0.y) * cr.height / 2)) - 1.5;   // just inside the ring: the hairline hides the edge
-      const ga = (1 - sm(0.0, 1.0, U.uSolid.value)).toFixed(3);   // the cut-out fades in with the disc
-      setRootVar('--gmask', `radial-gradient(circle at ${cx.toFixed(1)}px ${cy.toFixed(1)}px, rgba(0,0,0,${ga}) ${(rad - 1.5).toFixed(1)}px, #000 ${rad.toFixed(1)}px)`);
+      const sx = v => cr.left + (v.x + 1) * cr.width / 2, sy = v => cr.top + (1 - v.y) * cr.height / 2;
+      const c0 = P(0, 0), c1 = P(RING, 0), c2 = P(0, RING);
+      const cx = sx(c0), cy = sy(c0);
+      const rad = Math.min(Math.hypot(sx(c1) - cx, sy(c1) - cy), Math.hypot(sx(c2) - cx, sy(c2) - cy)) - 1.5;   // just inside the ring: the hairline hides the edge
+      const ga = (1 - sm(0.0, 1.0, solid)).toFixed(3);   // the cut-out fades in with the disc
+      let gm = `radial-gradient(circle at ${cx.toFixed(1)}px ${cy.toFixed(1)}px, rgba(0,0,0,${ga}) ${(rad - 1.5).toFixed(1)}px, #000 ${rad.toFixed(1)}px)`;
+      if (blow > 0.0005) {
+        // where the disc is already wiped (left of xa) the grain is whole; right of xb the hole is untouched
+        const xa = sx(P((blow * 1.7 - 0.25) / 0.55 - 0.5, 0)), xb = sx(P((blow * 1.7 + 0.10) / 0.55 - 0.5, 0));
+        const g = [0, .25, .5, .75, 1].map(k => { const u = k * k * (3 - 2 * k); return `rgba(0,0,0,${(1 - u).toFixed(3)}) ${(xa + (xb - xa) * k).toFixed(1)}px`; }).join(',');
+        gm += `,linear-gradient(90deg,${g})`;
+      }
+      setRootVar('--gmask', gm);
     } else setRootVar('--gmask', 'none');
     renderer.render(scene, camera);
   });
