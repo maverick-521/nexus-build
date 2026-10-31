@@ -2,6 +2,13 @@
    NX: shared timing (expo-out everywhere, cubic in-out for the light), a single
    global light band that travels top-left → bottom-right across the viewport,
    Lenis scroll, magnetic buttons, parallax and the liquid glass controls. */
+/* ==========================================================
+   BUSINESS_EMAIL — set this to the studio's Workspace address
+   (e.g. 'hello@yourdomain.com') to show it in the contact panel.
+   Empty string = no email shown anywhere on the site.
+   ========================================================== */
+const BUSINESS_EMAIL = '';
+
 (() => {
   const root = document.documentElement;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -538,22 +545,31 @@
     }
   });
 
-  /* contact: pick what you need, the email button follows */
+  /* contact: pick what you need; the Fiverr button stays, the hint line follows the pick */
   const cBtn = document.getElementById('contact-btn');
+  const cHint = document.getElementById('contact-hint');
   const cEl = document.querySelector('[data-lg="contact"]');
   const article = s => ({ 'AI assistant': 'an AI assistant', 'Video editing': 'a video edit', 'Social media': 'social media', 'Website': 'a website or web app', 'SEO': 'an SEO project', 'Shopify store': 'a Shopify store', 'Brand kit': 'a brand kit', 'Email marketing': 'email marketing', 'Automation': 'an automation', 'Bot': 'a bot', 'Scraping': 'a scraping project', 'Web app': 'a web app' }[s] || 'your project');
   cEl && cBtn && liquid(cEl, {
     initial: 0,
     onCommit: (i, o) => {
-      const s = o.dataset.subj, lbl = cBtn.querySelector('.lbl');
-      cBtn.href = `mailto:nexusbuild@mail.grokbot.com?subject=${encodeURIComponent(s + ' project')}`;
-      if (reduce) { lbl.textContent = 'Email about ' + article(s); return; }
-      lbl.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 200, easing: 'ease-in', fill: 'forwards' }).onfinish = () => {
-        lbl.textContent = 'Email about ' + article(s);
-        lbl.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 700, easing: 'cubic-bezier(.34,1.56,.64,1)', fill: 'forwards' });
+      const s = o.dataset.subj, msg = 'Message us on Fiverr about ' + article(s) + '.';
+      if (!cHint) return;
+      if (reduce) { cHint.textContent = msg; return; }
+      cHint.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-4px)' }], { duration: 180, easing: 'ease-in', fill: 'forwards' }).onfinish = () => {
+        cHint.textContent = msg;
+        cHint.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 600, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'forwards' });
       };
     }
   });
+
+  /* business email: the one place to add it later. Leave '' to keep it hidden everywhere. */
+  const bEl = document.querySelector('[data-business-email]');
+  if (BUSINESS_EMAIL && bEl) {
+    bEl.href = 'mailto:' + BUSINESS_EMAIL;
+    bEl.textContent = BUSINESS_EMAIL;
+    bEl.hidden = false;
+  }
 
   /* ---------- mobile menu ---------- */
   const btn = document.querySelector('.menu-btn'), menu = document.getElementById('mobile-menu');
