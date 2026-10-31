@@ -1,5 +1,15 @@
 import * as THREE from 'three';
-/* Nexus Studio v8 hero (midnight sapphire N; v8: shaders pre-compiled + warmed before the clock starts, grains shed by a soft fade instead of a hard cut, no DPR change at runtime, slower graceful exit): grains converge into a solid black-chrome "N" (thin stems, heavy diagonal) with platinum chamfers.
+/* v12d (Swell master mark): a slower, eased grain gathering (about 8.5s) that never just vanishes: a fine shimmer lingers on and around the mark,
+   then settles to a permanent residual texture. The mark reads as brushed platinum with one light direction (top left),
+   a soft contact shadow and inner shade on the disc, a calmer ring, a slower and softer sheen and ring light (8s apart),
+   and a DPR of up to 2 so every edge is pixel-crisp.
+   v12c: the ring is a crisp, luminous light edge (a bright Frost core with a tight Ice falloff of a few px, a brighter top-left arc
+   and a slow light travelling round it); the wide fuzzy ring glow is gone. The mark is larger and its face near-white Frost.
+   v12b: the settled mark is now a bright Frost / platinum face with a slim diagonal sheen every 6s, a soft Ice glow,
+   a brighter Frost ring, a slightly lifted disc, and the mark 7% larger in the circle.
+   v12d: the emblem is the original Swell mark (an N whose diagonal is a swelling S, joined to full-height hairline stems)
+   set inside a hairline circle; grains form both the mark and the ring, and are ~20% brighter than v11.
+   Nexus Studio v8 hero (midnight sapphire N; v8: shaders pre-compiled + warmed before the clock starts, grains shed by a soft fade instead of a hard cut, no DPR change at runtime, slower graceful exit): grains converge into a solid black-chrome "N" (thin stems, heavy diagonal) with platinum chamfers.
    One clock (NX), one light band, one curve. The mesh and the grains share the same group and the
    same unit space, so the grains land exactly on the jewel's silhouette and then dissolve into it. */
 const root = document.documentElement;
@@ -24,7 +34,7 @@ function start() {
   const mobile = innerWidth < 760 || matchMedia('(pointer:coarse)').matches;
   const COUNT = mobile ? 16000 : 40000;
   // v8: DPR is decided once (1.5 cap) and never changed while the N is on screen: a resize mid-assembly was one of the 'flick' sources
-  const DPR_MAX = Math.min(devicePixelRatio || 1, 1.5);
+  const DPR_MAX = Math.min(devicePixelRatio || 1, 2);   // v12d: up to 2x for pixel-crisp edges
   let dpr = DPR_MAX;
   renderer.setPixelRatio(dpr);
   renderer.setClearColor(0x000000, 0);
@@ -60,21 +70,24 @@ function start() {
   scene.environment = envTex;
 
   // ---------- the jewel ----------
-  // N outline in unit space (y up): hairline stems, one heavy diagonal (high-contrast, Didone-like)
-  const NP = [[-.34, -.36], [-.34, .36], [-.12, .36], [.265, -.2426], [.265, .36], [.34, .36], [.34, -.36], [.12, -.36], [-.265, .2426], [-.265, -.36]];
-  const DEPTH = .1, BT = .022, BS = .014;
-  const shape = new THREE.Shape(); NP.forEach(([x, y], i) => i ? shape.lineTo(x, y) : shape.moveTo(x, y)); shape.closePath();
-  const ngeo = new THREE.ExtrudeGeometry(shape, { depth: DEPTH, bevelEnabled: true, bevelThickness: BT, bevelSize: BS, bevelSegments: 1, curveSegments: 1 });
+  // Swell mark in unit space (y up, CCW): full-height hairline stems joined by the S-swelling diagonal, 0.60 tall before MK, inside a ring of radius RING
+  const POLYS = [[[-0.195,0.1177],[-0.1868,0.1017],[-0.1783,0.0873],[-0.1691,0.0737],[-0.1579,0.0591],[-0.146,0.0454],[-0.1334,0.0326],[-0.1202,0.0205],[-0.1052,0.0081],[-0.0928,-0.0013],[-0.0787,-0.0111],[-0.0469,-0.031],[-0.0152,-0.0486],[0.0524,-0.0839],[0.0826,-0.1013],[0.0969,-0.1106],[0.1094,-0.1198],[0.1214,-0.1296],[0.1318,-0.1393],[0.146,-0.155],[0.1581,-0.1716],[0.1683,-0.1888],[0.1772,-0.2084],[0.1846,-0.2302],[0.1899,-0.2523],[0.1935,-0.2764],[0.195,-0.3],[0.225,-0.3],[0.225,0.3],[0.195,0.3],[0.195,-0.1177],[0.1868,-0.1017],[0.1783,-0.0873],[0.1691,-0.0737],[0.1579,-0.0591],[0.146,-0.0454],[0.1334,-0.0326],[0.1202,-0.0205],[0.1051,-0.0081],[0.0928,0.0013],[0.0787,0.0111],[0.0469,0.031],[0.0152,0.0486],[-0.0524,0.0839],[-0.0826,0.1013],[-0.0969,0.1107],[-0.1094,0.1198],[-0.1214,0.1296],[-0.1318,0.1393],[-0.146,0.155],[-0.1581,0.1716],[-0.1683,0.1888],[-0.1772,0.2084],[-0.1846,0.2302],[-0.1899,0.2523],[-0.1935,0.2764],[-0.195,0.3],[-0.225,0.3],[-0.225,-0.3],[-0.195,-0.3]]];
+  const RING = .46, RING_T = .0026, MK = 1.1;   // v12c: mark .66 tall, bolder in the circle   // ring radius, ring tube, mark scale (v12b: .60 tall, larger in the circle)
+  const DEPTH = .035, BT = .008, BS = .004;   // v12b: a slimmer slab, so the bright face dominates
+  POLYS.forEach(P => P.forEach(v => { v[0] *= MK; v[1] *= MK; }));
+  const shapes = POLYS.map(P => { const sh = new THREE.Shape(); P.forEach(([x, y], i) => i ? sh.lineTo(x, y) : sh.moveTo(x, y)); sh.closePath(); return sh; });
+  const ngeo = new THREE.ExtrudeGeometry(shapes, { depth: DEPTH, bevelEnabled: true, bevelThickness: BT, bevelSize: BS, bevelSegments: 1, curveSegments: 1 });
   ngeo.translate(0, 0, -DEPTH / 2);
   const FRONT = DEPTH / 2 + BT;
 
   const U = {
     uTime: { value: 0 }, uForm: { value: 0 }, uBlow: { value: 0 }, uSolid: { value: 0 },
     uSweep: { value: -9 }, uLight: { value: new THREE.Vector2(-0.3, 0.35) },
-    uSize: { value: mobile ? 2.9 : 2.5 }, uDpr: { value: dpr }, uKeep: { value: 1.001 }
+    uSize: { value: mobile ? 2.9 : 2.5 }, uDpr: { value: dpr }, uKeep: { value: 1.001 }, uLinger: { value: 1 }
   };
   // shared dissolve + inner glow + light band, injected into the physical material
   function jewelize(mat, kind) {
+    mat.defines = Object.assign(mat.defines || {}, kind === 'gem' ? { IS_GEM: '' } : { IS_RING: '' });
     mat.onBeforeCompile = sh => {
       Object.assign(sh.uniforms, { uTime: U.uTime, uSolid: U.uSolid, uBlow: U.uBlow, uSweep: U.uSweep });
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vLoc;')
@@ -104,14 +117,33 @@ function start() {
             chm = vec3(0.90, 0.94, 0.99) * kl * bev * 0.9;                     // crisp platinum catch-lights on the chamfers
           #endif
           float fres = pow(1.0 - ndv, 3.0);
-          // satin face: a soft top-left to bottom-right graphite-to-silver falloff (no lines, no facets)
           float face = smoothstep(0.55, 0.92, ndv);
-          float grad = smoothstep(-0.5, 0.55, lp.y * 0.85 - lp.x * 0.35);
-          vec3 faceCol = mix(vec3(0.0), vec3(0.014, 0.022, 0.040), grad * grad);
-          totalEmissiveRadiance += chm + faceCol * face
-                                 + vec3(0.26, 0.44, 0.74) * fres * 0.07                  // a restrained sapphire edge light
-                                 + vec3(0.86, 0.92, 1.00) * band * (0.025 + fres * 0.6)  // the light sweep, ice-silver
-                                 + vec3(0.70, 0.82, 0.98) * edgeGlow * 1.1;
+          // v12b sleek sheen: once the mark is solid, a slim diagonal light passes across it every 6s (1.5s pass)
+          float sd = dot(lp.xy, vec2(0.80, -0.60));
+          float st = uTime - 9.6;   // v12d: after the slower formation
+          float sp = st > 0.0 ? -0.75 + mod(st, 8.0) * 0.62 : -9.0;   // v12d: every 8s, a slower 2.4s pass
+          float sheen = (0.75 * exp(-pow((sd - sp) * 12.0, 2.0)) + 0.12 * exp(-pow((sd - sp) * 3.5, 2.0))) * smoothstep(0.85, 1.0, uSolid);
+          #ifdef IS_GEM
+            // v12b: a bright Frost / platinum face, lit from the top left, with a cooler silver toward the bottom right
+            float g = clamp(0.52 + lp.y * 0.85 - lp.x * 0.55, 0.0, 1.0);
+            // v12d: a fine brushed grain along the stroke direction, kept to a few percent
+            float br = hsh(vec2(floor(dot(lp.xy, vec2(0.6, 0.8)) * 1400.0), 3.1)) * 0.6 + hsh(vec2(floor(dot(lp.xy, vec2(0.6, 0.8)) * 380.0), 7.7)) * 0.4;
+            vec3 frost = mix(vec3(0.60, 0.66, 0.78), vec3(0.98, 1.02, 1.08), g) * (0.965 + br * 0.05);   // v12d: brushed platinum, lit from the top left
+            totalEmissiveRadiance += frost * face
+                                   + vec3(0.20, 0.24, 0.33) * (1.0 - face) + chm * 1.35      // polished chamfers, a step darker for a crisp edge
+                                   + vec3(1.0, 1.02, 1.05) * sheen * (1.7 * face + 1.0 * (1.0 - face))
+                                   + vec3(0.86, 0.92, 1.00) * band * (0.05 + fres * 0.5)
+                                   + vec3(0.70, 0.82, 0.98) * edgeGlow * 1.1;
+          #else
+            // v12b: the ring is a crisp Frost hairline
+            // v12c: a lit fibre edge: a bright Frost core, brighter round the top left, with a slow light travelling round it
+            float ang = atan(lp.y, lp.x);
+            float arc = 0.62 + 0.38 * pow(0.5 + 0.5 * cos(ang - 2.2), 2.0);
+            float tr = 2.2 - uTime * 0.26;   // v12d: slower, one lap in ~24s
+            float trav = 0.6 * exp(-pow(atan(sin(ang - tr), cos(ang - tr)) * 2.6, 2.0)) * smoothstep(0.85, 1.0, uSolid);
+            totalEmissiveRadiance += vec3(0.88, 0.94, 1.03) * (0.95 * arc + 0.8 * trav) + chm
+                                   + vec3(0.86, 0.92, 1.00) * band * 0.3 + vec3(0.70, 0.82, 0.98) * edgeGlow * 1.1;
+          #endif
         }`);
       sh.uniforms.uScaleInv = scaleInv;
     };
@@ -119,31 +151,114 @@ function start() {
   const scaleInv = { value: 1 };
   // satin black chrome: a metal body that only shows the studio as long, soft reflections
   const gemMat = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color('#7f8fa8'), metalness: 1.0, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.06,
-    envMapIntensity: 1.0, flatShading: true
+    color: new THREE.Color('#9aa8bd'), metalness: 1.0, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.08,
+    envMapIntensity: 0.55, flatShading: true
   });
   jewelize(gemMat, 'gem');
   const gem = new THREE.Mesh(ngeo, gemMat);
 
+  // the ring: a hairline of brushed platinum, dissolving with the mark
+  const ringMat = new THREE.MeshPhysicalMaterial({ color: new THREE.Color('#c9d5e6'), metalness: 1.0, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.1, envMapIntensity: 0.9 });
+  jewelize(ringMat, 'ring');
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(RING, RING_T, 10, 420), ringMat);
+  // the disc: a quiet midnight fill behind the mark, so the emblem reads as a badge against the stars
+  const discMat = new THREE.ShaderMaterial({
+    uniforms: U, transparent: true, depthWrite: false,
+    vertexShader: `varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `varying vec2 vP; uniform float uSolid,uBlow;
+      void main(){
+        float r = length(vP) / ${RING.toFixed(3)};
+        vec3 c = mix(vec3(0.070,0.125,0.245), vec3(0.026,0.046,0.100),   // v12b: lifted a touch
+           smoothstep(0.0, 0.95, length(vP - vec2(0.0, 0.16)) / ${RING.toFixed(3)}));
+        float rim = smoothstep(0.93, 1.0, r) * 0.35;   // v12c: a tighter inner lift
+        c *= 1.0 - smoothstep(0.62, 0.99, length(vP + vec2(0.0, -0.035)) / ${RING.toFixed(3)}) * 0.42;   // v12d: an inner shadow, light from above
+        c += vec3(0.33,0.50,0.70) * rim * 0.32 * (0.55 + 0.45 * smoothstep(-0.2, 0.6, vP.y / ${RING.toFixed(3)}));
+        float a = 0.9 * smoothstep(0.0, 1.0, uSolid) * (1.0 - smoothstep(-0.1, 0.25, uBlow*1.7 - (vP.x+0.5)*0.55));
+        gl_FragColor = vec4(c * a, a);
+      }`,
+    premultipliedAlpha: true
+  });
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(RING - RING_T, 160), discMat);
+  disc.position.z = -DEPTH / 2 - BT - .02; disc.renderOrder = -1;
+  // v12c: the ring's light edge: a tight Ice / Sapphire falloff of a few px either side of the core (no wide haze)
+  const rimMat = new THREE.ShaderMaterial({
+    uniforms: U, transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending,
+    vertexShader: `varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `varying vec2 vP; uniform float uTime,uSolid,uBlow;
+      void main(){
+        float d = length(vP) - ${RING.toFixed(3)};
+        float w = d > 0.0 ? 0.0042 : 0.0034;                         // a touch tighter on the inside
+        float e = exp(-abs(d) / w) + 0.10 * exp(-abs(d) / 0.012);     // tight bloom + a whisper of air
+        float ang = atan(vP.y, vP.x);
+        float arc = 0.55 + 0.45 * pow(0.5 + 0.5 * cos(ang - 2.2), 2.0);
+        float tr = 2.2 - uTime * 0.26;   // v12d: slower, one lap in ~24s
+        float trav = 0.6 * exp(-pow(atan(sin(ang - tr), cos(ang - tr)) * 2.6, 2.0)) * smoothstep(0.85, 1.0, uSolid);
+        vec3 c = mix(vec3(0.30, 0.52, 1.00), vec3(0.62, 0.80, 1.00), exp(-abs(d) / 0.004)) * e * (0.62 * arc + 0.7 * trav);   // v12d: calmer, elegant rather than neon
+        c *= smoothstep(0.3, 1.0, uSolid) * (1.0 - smoothstep(-0.1, 0.25, uBlow*1.7 - (vP.x+0.5)*0.55));
+        gl_FragColor = vec4(c, clamp(max(c.r, max(c.g, c.b)), 0.0, 1.0));
+      }`,
+    premultipliedAlpha: true
+  });
+  const rim = new THREE.Mesh(new THREE.RingGeometry(RING - .05, RING + .06, 512, 1), rimMat);
+  rim.position.z = RING_T * .5; rim.renderOrder = 1;
+  // v12b: soft Ice / Sapphire glow for presence: the mark (red) and the ring (green), blurred once into a canvas texture
+  const GL = 1.3, gc = document.createElement('canvas'); gc.width = gc.height = 512;   // a pre-blurred mask, so 512 is plenty
+  { const x = gc.getContext('2d'), k = 512 / GL, T = v => [256 + v[0] * k, 256 - v[1] * k];
+    x.fillStyle = '#000'; x.fillRect(0, 0, 512, 512); x.globalCompositeOperation = 'lighter';
+    x.filter = 'blur(14px)'; x.fillStyle = '#ff0000';
+    POLYS.forEach(P => { x.beginPath(); P.forEach((v, i) => { const [a, b] = T(v); i ? x.lineTo(a, b) : x.moveTo(a, b); }); x.closePath(); x.fill(); });
+  }   // v12c: the ring no longer has a blurred glow
+  const glowTex = new THREE.CanvasTexture(gc);
+  const glowMat = new THREE.ShaderMaterial({
+    uniforms: Object.assign({ uG: { value: glowTex } }, U), transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending,
+    vertexShader: `varying vec2 vU; varying vec2 vP; void main(){ vU = uv; vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `varying vec2 vU; varying vec2 vP; uniform sampler2D uG; uniform float uSolid,uBlow;
+      void main(){
+        vec4 t = texture2D(uG, vU);
+        vec3 c = vec3(0.42, 0.62, 1.00) * t.r * 0.16;
+        c *= smoothstep(0.3, 1.0, uSolid) * (1.0 - smoothstep(-0.1, 0.25, uBlow*1.7 - (vP.x+0.5)*0.55));
+        gl_FragColor = vec4(c, clamp(max(c.r, max(c.g, c.b)), 0.0, 1.0));
+      }`,
+    premultipliedAlpha: true
+  });
+  const shadeMat = new THREE.ShaderMaterial({
+    uniforms: Object.assign({ uG: { value: glowTex } }, U), transparent: true, depthWrite: false, depthTest: true,
+    vertexShader: `varying vec2 vU; varying vec2 vP; void main(){ vU = uv; vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `varying vec2 vU; varying vec2 vP; uniform sampler2D uG; uniform float uSolid,uBlow;
+      void main(){
+        float R = ${RING.toFixed(3)};
+        float ms = texture2D(uG, vU + vec2(-0.010, 0.014)).r * 0.55 * step(length(vP), R);            // the mark's contact shadow on the disc
+        float d = length(vP - vec2(0.0, -0.022)) / R;
+        float ds = (1.0 - smoothstep(0.97, 1.16, d)) * step(R + 0.002, length(vP)) * 0.55;         // the badge's soft shadow on the page
+        float a = max(ms, ds) * smoothstep(0.3, 1.0, uSolid) * (1.0 - smoothstep(-0.1, 0.25, uBlow*1.7 - (vP.x+0.5)*0.55));
+        gl_FragColor = vec4(0.0, 0.0, 0.0, a);
+      }`
+  });
+  const shade = new THREE.Mesh(new THREE.PlaneGeometry(GL, GL), shadeMat);
+  shade.position.z = -DEPTH / 2 - BT - .019; shade.renderOrder = -1;
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(GL, GL), glowMat);
+  glow.position.z = disc.position.z + .004; glow.renderOrder = 0;
   const jewel = new THREE.Group();
-  jewel.add(gem);
+  jewel.add(disc); jewel.add(shade); jewel.add(glow); jewel.add(gem); jewel.add(ring); jewel.add(rim);
   scene.add(jewel);
 
   // ---------- grains: sampled from the same outline and the same depth as the solid N ----------
-  const inPoly = (x, y) => { let c = false; for (let i = 0, j = NP.length - 1; i < NP.length; j = i++) { const [xi, yi] = NP[i], [xj, yj] = NP[j]; if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) c = !c; } return c; };
-  const edges = NP.map((p, i) => { const q = NP[(i + 1) % NP.length]; return { p, q, len: Math.hypot(q[0] - p[0], q[1] - p[1]) }; });
+  const inOne = (NP, x, y) => { let c = false; for (let i = 0, j = NP.length - 1; i < NP.length; j = i++) { const [xi, yi] = NP[i], [xj, yj] = NP[j]; if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) c = !c; } return c; };
+  const inPoly = (x, y) => POLYS.some(P => inOne(P, x, y));
+  const edges = POLYS.flatMap(NP => NP.map((p, i) => { const q = NP[(i + 1) % NP.length]; return { p, q, len: Math.hypot(q[0] - p[0], q[1] - p[1]) }; }));
   const per = edges.reduce((s, e) => s + e.len, 0);
-  // outward normal: polygon is clockwise in y-up space
-  const area = NP.reduce((s, p, i) => { const q = NP[(i + 1) % NP.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0);
-  const sgn = area > 0 ? 1 : -1;
+  const sgn = 1;                             // every outline is counter-clockwise in y-up space
 
-  const aT = new Float32Array(COUNT * 3), aC = new Float32Array(COUNT * 3), aS = new Float32Array(COUNT * 4), aK = new Float32Array(COUNT), aR = new Float32Array(COUNT);
+  const aT = new Float32Array(COUNT * 3), aC = new Float32Array(COUNT * 3), aS = new Float32Array(COUNT * 4), aK = new Float32Array(COUNT), aR = new Float32Array(COUNT), aF = new Float32Array(COUNT);
   for (let i = 0; i < COUNT; i++) {
     const r = Math.random();
     let tx, ty, tz, cls;
-    if (r < .58) {            // polished face
-      cls = 0; do { tx = Math.random() * .7 - .35; ty = Math.random() * .74 - .37; } while (!inPoly(tx, ty));
+    if (r < .5) {             // polished face
+      cls = 0; do { tx = (Math.random() * .45 - .225) * MK; ty = (Math.random() * .6 - .3) * MK; } while (!inPoly(tx, ty));
       tz = FRONT;
+    } else if (r > .87) {     // the ring
+      cls = 2; const th = Math.random() * Math.PI * 2, rr = RING + (Math.random() - .5) * RING_T * 2.2;
+      tx = Math.cos(th) * rr; ty = Math.sin(th) * rr; tz = (Math.random() - .5) * RING_T * 2;
     } else {                  // chamfered silhouette, through the thickness
       cls = 1; let d = Math.random() * per, e = edges[0];
       for (const ed of edges) { if (d <= ed.len) { e = ed; break; } d -= ed.len; }
@@ -156,11 +271,12 @@ function start() {
     const a = Math.random() * Math.PI * 2, rad = 0.6 + Math.pow(Math.random(), 0.6) * 2.2;
     aC[i * 3] = tx - 1.4 + Math.cos(a) * rad; aC[i * 3 + 1] = ty + Math.sin(a) * rad * 0.55; aC[i * 3 + 2] = (Math.random() - 0.5) * 2.4;
     const delay = (tx + 0.5) * 0.42 + Math.random() * 0.22;
-    const bright = cls === 0 ? 0.5 + Math.random() * 0.4 : 0.8 + Math.random() * 0.5;
+    const bright = cls === 0 ? 0.5 + Math.random() * 0.4 : cls === 2 ? 0.7 + Math.random() * 0.45 : 0.8 + Math.random() * 0.5;
     aS[i * 4] = delay; aS[i * 4 + 1] = 0.6 + Math.random() * 0.9; aS[i * 4 + 2] = bright; aS[i * 4 + 3] = Math.random();
     // silver-blue grains with a share of ice-sapphire: a few on the face and edges, rare pale sparks
     const pe = cls === 0 ? .16 : .12;
     aK[i] = Math.random() < pe ? (Math.random() < .06 ? 1.0 : .7) : 0;
+    aF[i] = cls === 0 ? 1 : 0;               // v12d: face grains rest quieter so the platinum face stays clean
     aR[i] = i / COUNT;                       // rank: adaptive quality fades out the top ranks, never cuts them
   }
   const geo = new THREE.BufferGeometry();
@@ -169,6 +285,7 @@ function start() {
   geo.setAttribute('aSeed', new THREE.BufferAttribute(aS, 4));
   geo.setAttribute('aEm', new THREE.BufferAttribute(aK, 1));
   geo.setAttribute('aRank', new THREE.BufferAttribute(aR, 1));
+  geo.setAttribute('aFace', new THREE.BufferAttribute(aF, 1));
   let drawN = COUNT; geo.setDrawRange(0, drawN);
 
   const NOISE = `
@@ -205,12 +322,12 @@ function start() {
   const mat = new THREE.ShaderMaterial({
     uniforms: U, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
     vertexShader: NOISE + `
-      attribute vec3 aChaos; attribute vec4 aSeed; attribute float aEm; attribute float aRank;
-      uniform float uTime,uForm,uBlow,uSolid,uSweep,uSize,uDpr,uKeep; uniform vec2 uLight;
+      attribute vec3 aChaos; attribute vec4 aSeed; attribute float aEm; attribute float aRank; attribute float aFace;
+      uniform float uTime,uForm,uBlow,uSolid,uSweep,uSize,uDpr,uKeep,uLinger; uniform vec2 uLight;
       varying vec3 vCol; varying float vA; varying float vSpec;
       void main(){
         float f=clamp((uForm*1.75-aSeed.x)/1.0,0.0,1.0);
-        float fe=f>=1.0?1.0:1.0-pow(2.0,-10.0*f);
+        float fe=f>=1.0?1.0:1.0-pow(1.0-f,3.0)*(1.0-f*0.4);   // v12d: a softer, longer ease-out (no snap)
         float xn=position.x+0.5;
         float b=clamp(uBlow*1.7-xn*0.55-aSeed.w*0.15,0.0,1.0);
         vec3 p=mix(aChaos,position,fe);
@@ -230,7 +347,9 @@ function start() {
         float glint=pow(aSeed.w,10.0);
         float l=exp(-dot(position.xy-uLight,position.xy-uLight)*7.0);
         float settle=uSolid*fe*(1.0-b);                 // once the jewel is solid, grains step back
-        float k=(br*0.48 + l*0.28*br + (1.0-fe)*0.12)*mix(1.0,0.03,settle) + band*(0.55+glint*5.0)*mix(1.0,0.18,settle);
+        float tw=0.55+0.45*sin(uTime*(0.9+aSeed.y*1.4)+aSeed.w*60.0);   // v12d: a slow shimmer
+        float rest=(0.16+0.30*uLinger)*tw*mix(1.0,0.5,aFace);   // a fine layer lingers (lighter on the face), then stays as a residual texture
+        float k=((br*0.48 + l*0.28*br + (1.0-fe)*0.12)*mix(1.0,rest,settle) + band*(0.55+glint*5.0)*mix(1.0,0.08,settle))*1.2;   // v12: grains ~20% brighter
         vec3 plat=mix(vec3(0.84,0.89,0.97),vec3(0.93,0.95,1.00),aSeed.w);
         vec3 jade=mix(vec3(0.52,0.68,0.92),vec3(0.78,0.88,1.00),step(0.95,aEm));
         vCol=mix(plat,jade,step(0.5,aEm))*k;
@@ -262,7 +381,7 @@ function start() {
     W = innerWidth; H = sticky.clientHeight || innerHeight;
     renderer.setSize(W, H, false);
     camera.aspect = W / H; camera.updateProjectionMatrix();
-    emPx = mobile || W < 760 ? Math.min(W * 0.66, H * 0.4) : Math.min(H * 0.56, W * 0.38, 540);
+    emPx = mobile || W < 760 ? Math.min(W * 0.7, H * 0.42) : Math.min(H * 0.59, W * 0.4, 580);   // v12c: a bit larger
     const s = emPx / H * 2 * Z0 * tanH;
     jewel.scale.setScalar(s); scaleInv.value = 1 / s;
     setVar('--emsz', emPx.toFixed(1) + 'px');
@@ -325,18 +444,19 @@ function start() {
     const z = Z0 + (Z1 - Z0) * easeIO(Math.min(1, t / 26)) - p * 0.6;
     camera.position.set(m.x * 0.18, -m.y * 0.12, z); camera.lookAt(0, 0, 0);
     // a slow, weighty turn once formed: the facets catch the soft boxes
-    const idle = sm(4.5, 7, t);
+    const idle = sm(7.5, 11, t);
     jewel.rotation.y = m.x * 0.16 + Math.sin(t * 0.21) * 0.10 * idle;
     jewel.rotation.x = m.y * 0.10 + Math.sin(t * 0.17 + 1.3) * 0.045 * idle;
 
     // v8: the N leaves slowly, turning a little as it goes; the horizon sinks and the stars drift with the cursor
     jewel.rotation.y += sm(0.0, 0.8, p) * 0.5;
-    jewel.position.y = sm(0.0, 0.8, p) * 0.06;
+    jewel.position.y = .056 + sm(0.0, 0.8, p) * 0.06;   // v12c: a little higher for the larger badge   // v12: lifted a touch so the ring clears the intro
     if (planet) setTf(planet, `translate3d(${(m.x * -10).toFixed(1)}px,${(p * 90 + m.y * -4).toFixed(1)}px,0)`);
     if (sky) setTf(sky, `translate3d(${(m.x * -18).toFixed(1)}px,${(m.y * -12 - p * 60).toFixed(1)}px,0)`);
-    const form = Math.min(1, Math.max(0, (t - 0.35) / 4.4));
+    const form = Math.min(1, Math.max(0, (t - 0.4) / 7.4));   // v12d: a slower gathering (was 4.4s)
     U.uTime.value = t; U.uForm.value = form;
-    U.uSolid.value = sm(3.0, 5.4, t);
+    U.uSolid.value = sm(5.0, 8.6, t);   // v12d: the solid mark resolves gently under the grains
+    U.uLinger.value = 1 - sm(8.6, 18.0, t);          // the shimmer eases down to a residual over ~10s
     U.uBlow.value = sm(0.0, 0.8, p);                 // v8: was 0 → .55 of the pin; now 0 → .8, eased
     const D = NX.bandAt(t, W, innerHeight);
     const S = emPx * Z0 / z, Dc = (W / 2) * 0.788 + (r.top + H / 2 > 0 ? H / 2 : 0) * 0.616;
@@ -344,8 +464,8 @@ function start() {
     U.uLight.value.set(m.x * 0.5 - 0.15, -m.y * 0.5 + 0.2);
     gem.visible = U.uSolid.value > 0.001 && U.uBlow.value < 0.999;   // program + env map were warmed before t=0, so first use costs nothing
 
-    setVar('--solid', (sm(3.3, 5.6, t) * (1 - sm(0.03, 0.5, p))).toFixed(3));
-    setVar('--intro', (sm(4.8, 6.2, t) * (1 - sm(0.0, 0.24, p))).toFixed(3));
+    setVar('--solid', (sm(5.3, 8.8, t) * (1 - sm(0.03, 0.5, p))).toFixed(3));
+    setVar('--intro', (sm(8.0, 9.8, t) * (1 - sm(0.0, 0.24, p))).toFixed(3));
     setVar('--hp', sm(0.42, 0.76, p).toFixed(3));
     setVar('--hs', (sm(0.42, 0.98, p) * 1.3).toFixed(3));
     setVar('--lp', sm(0.58, 0.86, p).toFixed(3));
