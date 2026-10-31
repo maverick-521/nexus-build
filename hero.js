@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-/* v12d (Swell master mark): a slower, eased grain gathering (about 8.5s) that never just vanishes: a fine shimmer lingers on and around the mark,
+/* v12e: timing only: a quicker gathering (mark formed by ~5.9s, was 8.6s), first sheen at 6.6s, and a slower vanish:
+   loose grains fade over ~7.2s (was ~3.6s), the shimmer eases to its residual over ~19s (was ~9.4s), and scroll dispersal trails the scroll for a longer drift.
+   v12d (Swell master mark): a slower, eased grain gathering (about 8.5s) that never just vanishes: a fine shimmer lingers on and around the mark,
    then settles to a permanent residual texture. The mark reads as brushed platinum with one light direction (top left),
    a soft contact shadow and inner shade on the disc, a calmer ring, a slower and softer sheen and ring light (8s apart),
    and a DPR of up to 2 so every edge is pixel-crisp.
@@ -83,7 +85,7 @@ function start() {
   const U = {
     uTime: { value: 0 }, uForm: { value: 0 }, uBlow: { value: 0 }, uSolid: { value: 0 },
     uSweep: { value: -9 }, uLight: { value: new THREE.Vector2(-0.3, 0.35) },
-    uSize: { value: mobile ? 2.9 : 2.5 }, uDpr: { value: dpr }, uKeep: { value: 1.001 }, uLinger: { value: 1 }
+    uSize: { value: mobile ? 2.9 : 2.5 }, uDpr: { value: dpr }, uKeep: { value: 1.001 }, uLinger: { value: 1 }, uFade: { value: 0 }
   };
   // shared dissolve + inner glow + light band, injected into the physical material
   function jewelize(mat, kind) {
@@ -120,7 +122,7 @@ function start() {
           float face = smoothstep(0.55, 0.92, ndv);
           // v12b sleek sheen: once the mark is solid, a slim diagonal light passes across it every 6s (1.5s pass)
           float sd = dot(lp.xy, vec2(0.80, -0.60));
-          float st = uTime - 9.6;   // v12d: after the slower formation
+          float st = uTime - 6.6;   // v12e: soon after the quicker formation (v12d 9.6)
           float sp = st > 0.0 ? -0.75 + mod(st, 8.0) * 0.62 : -9.0;   // v12d: every 8s, a slower 2.4s pass
           float sheen = (0.75 * exp(-pow((sd - sp) * 12.0, 2.0)) + 0.12 * exp(-pow((sd - sp) * 3.5, 2.0))) * smoothstep(0.85, 1.0, uSolid);
           #ifdef IS_GEM
@@ -323,7 +325,7 @@ function start() {
     uniforms: U, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
     vertexShader: NOISE + `
       attribute vec3 aChaos; attribute vec4 aSeed; attribute float aEm; attribute float aRank; attribute float aFace;
-      uniform float uTime,uForm,uBlow,uSolid,uSweep,uSize,uDpr,uKeep,uLinger; uniform vec2 uLight;
+      uniform float uTime,uForm,uBlow,uSolid,uSweep,uSize,uDpr,uKeep,uLinger,uFade; uniform vec2 uLight;
       varying vec3 vCol; varying float vA; varying float vSpec;
       void main(){
         float f=clamp((uForm*1.75-aSeed.x)/1.0,0.0,1.0);
@@ -336,7 +338,7 @@ function start() {
           vec3 c=curl(p*1.15+vec3(0.0,0.0,uTime*0.06));
           p+=c*(1.0-fe)*0.55;
           float bb=b*b;
-          p+=(c*0.9+vec3(1.35,0.38,0.7))*bb*(1.2+aSeed.w);
+          p+=(c*0.9+vec3(1.35,0.38,0.7))*bb*(0.75+aSeed.w*0.6);   // v12e: a gentler, longer drift (was 1.2+seed)
         }
         vec4 mv=modelViewMatrix*vec4(p,1.0);
         gl_Position=projectionMatrix*mv;
@@ -346,14 +348,14 @@ function start() {
         float band=exp(-pow((dot(position.xy,vec2(0.788,-0.616))-uSweep)*7.0,2.0));
         float glint=pow(aSeed.w,10.0);
         float l=exp(-dot(position.xy-uLight,position.xy-uLight)*7.0);
-        float settle=uSolid*fe*(1.0-b);                 // once the jewel is solid, grains step back
+        float settle=uFade*fe*(1.0-b);                  // v12e: grains step back on their own, slower clock (2x the v12d fade)
         float tw=0.55+0.45*sin(uTime*(0.9+aSeed.y*1.4)+aSeed.w*60.0);   // v12d: a slow shimmer
         float rest=(0.16+0.30*uLinger)*tw*mix(1.0,0.5,aFace);   // a fine layer lingers (lighter on the face), then stays as a residual texture
         float k=((br*0.48 + l*0.28*br + (1.0-fe)*0.12)*mix(1.0,rest,settle) + band*(0.55+glint*5.0)*mix(1.0,0.08,settle))*1.2;   // v12: grains ~20% brighter
         vec3 plat=mix(vec3(0.84,0.89,0.97),vec3(0.93,0.95,1.00),aSeed.w);
         vec3 jade=mix(vec3(0.52,0.68,0.92),vec3(0.78,0.88,1.00),step(0.95,aEm));
         vCol=mix(plat,jade,step(0.5,aEm))*k;
-        vA=(1.0-smoothstep(0.55,1.0,b))*smoothstep(0.0,0.08,uForm+0.02)/(dof*dof)*(1.0-smoothstep(uKeep-0.06,uKeep,aRank));
+        vA=(1.0-smoothstep(0.35,1.0,b))*smoothstep(0.0,0.08,uForm+0.02)/(dof*dof)*(1.0-smoothstep(uKeep-0.06,uKeep,aRank));
         vSpec=band*(0.4+glint*2.0)*mix(1.0,0.25,settle);
       }`,
     fragmentShader: `
@@ -430,7 +432,7 @@ function start() {
   window.__hero = { get count() { return drawN; }, get dpr() { return dpr; }, get ema() { return ema; }, get keep() { return keep; }, frames: [] };
 
   const sky = document.querySelector('.sky'), planet = document.querySelector('.planet');
-  let r = null, pSm = 0;
+  let r = null, pSm = 0, bSm = 0;
   NX.read(() => { r = inView ? stage.getBoundingClientRect() : null; });
   NX.on((now, dt, t) => {
     if (!r) return;
@@ -444,7 +446,7 @@ function start() {
     const z = Z0 + (Z1 - Z0) * easeIO(Math.min(1, t / 26)) - p * 0.6;
     camera.position.set(m.x * 0.18, -m.y * 0.12, z); camera.lookAt(0, 0, 0);
     // a slow, weighty turn once formed: the facets catch the soft boxes
-    const idle = sm(7.5, 11, t);
+    const idle = sm(5.2, 7.8, t);   // v12e (v12d 7.5–11)
     jewel.rotation.y = m.x * 0.16 + Math.sin(t * 0.21) * 0.10 * idle;
     jewel.rotation.x = m.y * 0.10 + Math.sin(t * 0.17 + 1.3) * 0.045 * idle;
 
@@ -453,19 +455,21 @@ function start() {
     jewel.position.y = .056 + sm(0.0, 0.8, p) * 0.06;   // v12c: a little higher for the larger badge   // v12: lifted a touch so the ring clears the intro
     if (planet) setTf(planet, `translate3d(${(m.x * -10).toFixed(1)}px,${(p * 90 + m.y * -4).toFixed(1)}px,0)`);
     if (sky) setTf(sky, `translate3d(${(m.x * -18).toFixed(1)}px,${(m.y * -12 - p * 60).toFixed(1)}px,0)`);
-    const form = Math.min(1, Math.max(0, (t - 0.4) / 7.4));   // v12d: a slower gathering (was 4.4s)
+    const form = Math.min(1, Math.max(0, (t - 0.35) / 5.0));   // v12e: quicker gathering (v12d 7.4s, v12c 4.4s)
     U.uTime.value = t; U.uForm.value = form;
-    U.uSolid.value = sm(5.0, 8.6, t);   // v12d: the solid mark resolves gently under the grains
-    U.uLinger.value = 1 - sm(8.6, 18.0, t);          // the shimmer eases down to a residual over ~10s
-    U.uBlow.value = sm(0.0, 0.8, p);                 // v8: was 0 → .55 of the pin; now 0 → .8, eased
+    U.uSolid.value = sm(3.4, 5.9, t);   // v12e: mark formed by ~5.9s (v12d 8.6s)
+    U.uFade.value = sm(3.6, 10.8, t);   // v12e: loose grains fade over ~7.2s (v12d ~3.6s)
+    U.uLinger.value = 1 - sm(6.0, 25.0, t);          // v12e: the shimmer eases down to a residual over ~19s (v12d ~9.4s)
+    bSm += (sm(0.0, 1.0, p) - bSm) * (1 - Math.exp(-dt * 1.8));   // v12e: scroll dispersal trails the scroll, ~2x slower drift and fade
+    U.uBlow.value = bSm > 0.9995 ? 1 : bSm;
     const D = NX.bandAt(t, W, innerHeight);
     const S = emPx * Z0 / z, Dc = (W / 2) * 0.788 + (r.top + H / 2 > 0 ? H / 2 : 0) * 0.616;
     U.uSweep.value = D == null ? -9 : (D - Dc) / S;
     U.uLight.value.set(m.x * 0.5 - 0.15, -m.y * 0.5 + 0.2);
     gem.visible = U.uSolid.value > 0.001 && U.uBlow.value < 0.999;   // program + env map were warmed before t=0, so first use costs nothing
 
-    setVar('--solid', (sm(5.3, 8.8, t) * (1 - sm(0.03, 0.5, p))).toFixed(3));
-    setVar('--intro', (sm(8.0, 9.8, t) * (1 - sm(0.0, 0.24, p))).toFixed(3));
+    setVar('--solid', (sm(3.6, 6.1, t) * (1 - sm(0.03, 0.5, p))).toFixed(3));
+    setVar('--intro', (sm(5.5, 7.0, t) * (1 - sm(0.0, 0.24, p))).toFixed(3));
     setVar('--hp', sm(0.42, 0.76, p).toFixed(3));
     setVar('--hs', (sm(0.42, 0.98, p) * 1.3).toFixed(3));
     setVar('--lp', sm(0.58, 0.86, p).toFixed(3));
