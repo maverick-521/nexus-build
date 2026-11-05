@@ -545,7 +545,7 @@ const BUSINESS_EMAIL = '';
     }
   });
 
-  /* contact: pick what you need; the Fiverr button stays, the hint line follows the pick */
+  /* contact: pick what you need; the contact button stays, the hint line follows the pick */
   const cBtn = document.getElementById('contact-btn');
   const cHint = document.getElementById('contact-hint');
   const cEl = document.querySelector('[data-lg="contact"]');
@@ -553,7 +553,7 @@ const BUSINESS_EMAIL = '';
   cEl && cBtn && liquid(cEl, {
     initial: 0,
     onCommit: (i, o) => {
-      const s = o.dataset.subj, msg = 'Message us on Fiverr about ' + article(s) + '.';
+      const s = o.dataset.subj, msg = 'Message us on X about ' + article(s) + '.';
       if (!cHint) return;
       if (reduce) { cHint.textContent = msg; return; }
       cHint.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-4px)' }], { duration: 180, easing: 'ease-in', fill: 'forwards' }).onfinish = () => {
