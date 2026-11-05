@@ -1,0 +1,28 @@
+@font-face{font-family:"Clash Display";src:url("fonts/clash-display-500.woff2") format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:"Clash Display";src:url("fonts/clash-display-600.woff2") format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"General Sans";src:url("fonts/general-sans-400.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"General Sans";src:url("fonts/general-sans-500.woff2") format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:"General Sans";src:url("fonts/general-sans-600.woff2") format("woff2");font-weight:600;font-display:swap}
+:root{--frost:#f2f8ff;--ice:#a9cbe8;--mist:#8592a6;--sap:#5480b2;--txt:#b8c3d2;--line:rgba(190,208,230,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:#030409;color:var(--txt);font:400 16px/1.6 "General Sans",ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;background:radial-gradient(110% 55% at 50% 0%,rgba(22,42,84,.32),transparent 70%),linear-gradient(180deg,#0b1325 0%,#050912 40%,#030409 100%)}
+a{color:var(--ice)}
+:focus-visible{outline:2px solid var(--ice);outline-offset:3px}
+.skip{position:absolute;left:16px;top:-60px;padding:10px 16px;border-radius:10px;background:#0c111f;color:var(--frost)}
+.skip:focus{top:16px}
+.wrap{max-width:1160px;margin:0 auto;padding:40px 24px 56px;display:grid;grid-template-columns:1fr 420px;gap:48px;align-items:start}
+header .top{max-width:1160px;margin:0 auto;padding:22px 24px 0;display:flex;align-items:center;gap:12px;color:var(--frost);font:600 15px/1 "General Sans",sans-serif;text-decoration:none}
+.top svg{width:15px;height:20px}
+.tag{display:inline-block;padding:6px 12px;border-radius:999px;border:1px solid rgba(169,203,232,.35);background:rgba(84,128,178,.12);color:var(--ice);font-size:13px;letter-spacing:.02em}
+h1{margin:18px 0 16px;font:600 clamp(36px,5vw,60px)/1.02 "Clash Display","General Sans",sans-serif;color:var(--frost);letter-spacing:-.01em}
+.lede{font-size:18px;max-width:34em}
+h2{margin:36px 0 12px;font:600 20px/1.2 "Clash Display","General Sans",sans-serif;color:var(--frost)}
+ul.pts{list-style:none;display:grid;gap:10px;max-width:36em}
+ul.pts li{padding-left:22px;position:relative}
+ul.pts li:before{content:"";position:absolute;left:2px;top:.62em;width:8px;height:8px;border-radius:2px;background:var(--sap)}
+ul.pts b{color:var(--frost);font-weight:600}
+.note{margin-top:28px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;font-size:14px;max-width:38em;background:rgba(242,248,255,.03)}
+.chat{position:sticky;top:24px;height:min(700px,calc(100vh - 48px))}
+footer{max-width:1160px;margin:0 auto;padding:0 24px 40px;font-size:13px;color:var(--mist)}
+@media (max-width:900px){.wrap{grid-template-columns:1fr;gap:28px;padding-top:28px}.chat{position:static;height:620px}}
